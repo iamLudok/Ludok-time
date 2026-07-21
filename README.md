@@ -43,6 +43,19 @@ Los datos viven en el almacenamiento del navegador. Para que estén a salvo:
    - *Reemplazar*: deja exactamente lo que hay en la copia.
    - *Fusionar*: añade lo de la copia sin borrar lo que ya tengas.
 
+## Despliegue (GitHub Pages)
+
+La app se publica sola en <https://iamludok.github.io/Ludok-time/> con cada `push` a `master`,
+mediante el workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+
+Requisito (una sola vez): en GitHub → **Settings → Pages → Build and deployment → Source**,
+elegir **GitHub Actions** (no "Deploy from a branch").
+
+> Importante: lo que se publica es la carpeta `dist/` (el build), no el código fuente.
+> Como Pages sirve la app en el subdirectorio `/Ludok-time/`, `vite.config.ts` fija `base` a esa
+> ruta y el router usa `basename`. El build genera además un `404.html` para que los enlaces
+> directos (p. ej. `/Ludok-time/settings`) funcionen al recargar.
+
 ## Instalar como app (PWA)
 
 Abre la web en el navegador del móvil y usa **"Añadir a pantalla de inicio"** / **"Instalar app"**.

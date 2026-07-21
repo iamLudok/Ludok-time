@@ -14,7 +14,8 @@ ensureSettings()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* basename: en GitHub Pages la app vive en /Ludok-time/, en local en / */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <App />
     </BrowserRouter>
   </StrictMode>,
