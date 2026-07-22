@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { statusLabel, isAnime, bookPercent } from '../lib/library'
+import { statusLabel, bookPercent } from '../lib/library'
 import type { Episode, Item } from '../types'
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -13,7 +13,6 @@ const TYPE_EMOJI: Record<string, string> = {
 }
 
 function itemEmoji(item: Item): string {
-  if (isAnime(item)) return '🌸'
   return TYPE_EMOJI[item.type] ?? '⭐'
 }
 

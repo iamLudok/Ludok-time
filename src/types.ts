@@ -1,7 +1,6 @@
 // Modelo de datos de Ludok Time.
 // Todo vive en local (IndexedDB). Pensado para crecer a más tipos de contenido.
 
-// El anime no es un tipo aparte: es una serie con la etiqueta 'anime' (ver ANIME_TAG).
 export type MediaType = 'series' | 'movie' | 'book' | 'youtube' | 'custom'
 
 export type MediaSource = 'tmdb' | 'openlibrary' | 'youtube' | 'manual'

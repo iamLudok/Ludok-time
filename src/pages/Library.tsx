@@ -3,16 +3,13 @@ import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import ItemCard from '../components/ItemCard'
-import { isAnime } from '../lib/library'
-import type { Item, Status } from '../types'
+import type { Item, MediaType, Status } from '../types'
 
-// 'anime' no es un tipo real: filtra series con la etiqueta anime.
-type TypeFilter = 'all' | 'series' | 'anime' | 'movie' | 'book'
+type TypeFilter = 'all' | MediaType
 
 const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
   { key: 'all', label: 'Todo' },
   { key: 'series', label: '📺 Series' },
-  { key: 'anime', label: '🌸 Anime' },
   { key: 'movie', label: '🎬 Pelis' },
   { key: 'book', label: '📖 Libros' },
 ]
@@ -36,12 +33,7 @@ export default function Library() {
     [],
   )
 
-  const matchesType = (i: Item) => {
-    if (type === 'all') return true
-    if (type === 'anime') return isAnime(i)
-    if (type === 'series') return i.type === 'series' && !isAnime(i)
-    return i.type === type
-  }
+  const matchesType = (i: Item) => type === 'all' || i.type === type
   // Los vídeos de YouTube viven en su propia sección: pueden ser miles y
   // ahogarían la biblioteca.
   const library = (items ?? []).filter((i) => i.type !== 'youtube')

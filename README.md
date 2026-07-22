@@ -1,7 +1,7 @@
 # Ludok Time 🎬📺
 
-Tu app personal para apuntar todo lo que ves y lees: **series, películas, anime, libros y vídeos
-de YouTube**. Nació porque TV Time se cayó y no quiero volver a perder mi historial: aquí
+Tu app personal para apuntar todo lo que ves y lees: **series, películas, libros y vídeos de
+YouTube**. Nació porque TV Time se cayó y no quiero volver a perder mi historial: aquí
 **los datos son míos** y viven en mi dispositivo.
 
 - **Local-first**: todo se guarda en el navegador (IndexedDB). Sin servidores, sin cuentas.
@@ -23,13 +23,10 @@ npm run preview  # sirve el build (para probar la PWA instalable)
 
 | Tipo | Fuente | Cómo se sigue el progreso |
 |---|---|---|
-| 📺 Series / 🌸 Anime | TMDB | Episodio a episodio, con "ver siguiente" |
+| 📺 Series | TMDB | Episodio a episodio, con "ver siguiente" |
 | 🎬 Películas | TMDB | Vista / pendiente |
 | 📖 Libros | Open Library (sin API key) | **Por página**, con % leído |
 | ▶️ Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
-
-**El anime** no es un tipo aparte: es una serie con la etiqueta `anime`, así puedes filtrarla sin
-duplicar categorías.
 
 **Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca, el diario ni
 en los contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y

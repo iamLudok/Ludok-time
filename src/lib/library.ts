@@ -3,28 +3,23 @@ import { getMovie, getSeries, getSeasonEpisodes, posterUrl } from './tmdb'
 import { getSettings } from './settings'
 import type { Item, Episode, Activity, ActivityKind, MediaType, Status } from '../types'
 
-/** Etiqueta que marca una serie como anime. */
-export const ANIME_TAG = 'anime'
-
-/** True si el item es una serie marcada como anime. */
-export function isAnime(item: Pick<Item, 'type' | 'tags'>): boolean {
-  return item.type === 'series' && item.tags.includes(ANIME_TAG)
-}
-
 /**
  * Registra una entrada de consumo en el diario ("he visto/leído X").
  * En modo "puesta al día" (ver Settings.catchUpMode) no escribe nada: sirve
  * para volcar historial antiguo sin ensuciar el diario con fechas falsas.
+ * `at` permite fijar el momento exacto (para conservar el orden real al
+ * marcar varios episodios de golpe).
  */
 async function logActivity(
   itemId: string,
   kind: ActivityKind,
   label: string,
   episodeId?: string,
+  at: number = Date.now(),
 ): Promise<void> {
   const { catchUpMode } = await getSettings()
   if (catchUpMode) return
-  const entry: Activity = { id: newId(), itemId, episodeId, kind, label, at: Date.now() }
+  const entry: Activity = { id: newId(), itemId, episodeId, kind, label, at }
   await db.activity.add(entry)
 }
 
@@ -64,15 +59,8 @@ export async function addMovieFromTmdb(
   return item.id
 }
 
-/**
- * Añade una serie desde TMDB, trayendo todos sus episodios (sin marcar).
- * `tags` permite marcarla como anime (ANIME_TAG). Devuelve el id local.
- */
-export async function addSeriesFromTmdb(
-  tmdbId: number,
-  status: Status = 'plan',
-  tags: string[] = [],
-): Promise<string> {
+/** Añade una serie desde TMDB, trayendo todos sus episodios (sin marcar). Devuelve el id local. */
+export async function addSeriesFromTmdb(tmdbId: number, status: Status = 'plan'): Promise<string> {
   const existing = await db.items
     .where('type')
     .equals('series')
@@ -94,7 +82,7 @@ export async function addSeriesFromTmdb(
     runtime: s.episodeRuntime,
     status,
     rating: 0,
-    tags,
+    tags: [],
     addedAt: Date.now(),
   }
   await db.items.add(item)
@@ -135,17 +123,43 @@ export async function setEpisodeWatched(episodeId: string, watched: boolean): Pr
   await recomputeSeriesStatus(ep.itemId)
 }
 
+/**
+ * Marca como vistos varios episodios de golpe (p. ej. "hasta aquí" o toda una
+ * temporada). Cada uno genera SU PROPIA entrada en el diario —no un mensaje
+ * agregado tipo "6 episodios hasta X"— con marcas de tiempo escalonadas en
+ * milisegundos para conservar el orden real dentro del mismo minuto.
+ */
+async function markManyWatched(itemId: string, episodes: Episode[]): Promise<void> {
+  const toMark = episodes.filter((e) => !e.watched)
+  if (!toMark.length) return
+  const base = Date.now()
+  await db.episodes.bulkPut(toMark.map((e, i) => ({ ...e, watched: true, watchedAt: base + i })))
+  for (let i = 0; i < toMark.length; i++) {
+    await logActivity(itemId, 'watched_episode', epLabel(toMark[i]), toMark[i].id, base + i)
+  }
+  await recomputeSeriesStatus(itemId)
+}
+
 /** Marca como vistos todos los episodios hasta (incluido) uno dado, en orden. */
 export async function markWatchedUpTo(itemId: string, episodeId: string): Promise<void> {
   const eps = await orderedEpisodes(itemId)
   const idx = eps.findIndex((e) => e.id === episodeId)
   if (idx < 0) return
-  const now = Date.now()
-  const toMark = eps.slice(0, idx + 1).filter((e) => !e.watched)
-  await db.episodes.bulkPut(toMark.map((e) => ({ ...e, watched: true, watchedAt: now })))
-  if (toMark.length) {
-    await logActivity(itemId, 'watched_episode', `${toMark.length} episodios hasta ${epLabel(eps[idx])}`)
+  await markManyWatched(itemId, eps.slice(0, idx + 1))
+}
+
+/** Marca o desmarca todos los episodios de una temporada de golpe. */
+export async function setSeasonWatched(
+  itemId: string,
+  episodes: Episode[],
+  watched: boolean,
+): Promise<void> {
+  if (watched) {
+    await markManyWatched(itemId, episodes)
+    return
   }
+  // Desmarcar tampoco genera entradas de diario (ver setEpisodeWatched).
+  await db.episodes.bulkPut(episodes.map((e) => ({ ...e, watched: false, watchedAt: undefined })))
   await recomputeSeriesStatus(itemId)
 }
 

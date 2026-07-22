@@ -1,5 +1,4 @@
-import { setEpisodeWatched, markWatchedUpTo } from '../lib/library'
-import { db } from '../lib/db'
+import { setEpisodeWatched, markWatchedUpTo, setSeasonWatched } from '../lib/library'
 import type { Episode } from '../types'
 
 function groupBySeason(eps: Episode[]): Map<number, Episode[]> {
@@ -14,15 +13,9 @@ function groupBySeason(eps: Episode[]): Map<number, Episode[]> {
 export default function EpisodeList({ itemId, episodes }: { itemId: string; episodes: Episode[] }) {
   const seasons = groupBySeason(episodes)
 
-  const toggleSeason = async (seasonEps: Episode[]) => {
+  const toggleSeason = async (itemId: string, seasonEps: Episode[]) => {
     const allWatched = seasonEps.every((e) => e.watched)
-    const now = Date.now()
-    await db.episodes.bulkPut(
-      seasonEps.map((e) => ({ ...e, watched: !allWatched, watchedAt: !allWatched ? now : undefined })),
-    )
-    // Forzamos recálculo de estado marcando/desmarcando el último episodio.
-    const last = seasonEps[seasonEps.length - 1]
-    await setEpisodeWatched(last.id, !allWatched)
+    await setSeasonWatched(itemId, seasonEps, !allWatched)
   }
 
   return (
@@ -39,7 +32,7 @@ export default function EpisodeList({ itemId, episodes }: { itemId: string; epis
                   ({watched}/{seasonEps.length})
                 </span>
               </span>
-              <button className="btn btn-sm" onClick={() => toggleSeason(seasonEps)}>
+              <button className="btn btn-sm" onClick={() => toggleSeason(itemId, seasonEps)}>
                 {allWatched ? 'Desmarcar' : 'Marcar toda'}
               </button>
             </div>
