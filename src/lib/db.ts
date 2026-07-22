@@ -1,12 +1,11 @@
 import Dexie, { type Table } from 'dexie'
-import type { Item, Episode, Activity, Settings } from '../types'
+import type { Item, Episode, Settings } from '../types'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export class LudokDB extends Dexie {
   items!: Table<Item, string>
   episodes!: Table<Episode, string>
-  activity!: Table<Activity, string>
   settings!: Table<Settings, string>
 
   constructor() {
@@ -23,6 +22,14 @@ export class LudokDB extends Dexie {
       items: 'id, type, status, title, addedAt',
       episodes: 'id, itemId, [itemId+season], watchedAt',
       activity: 'id, itemId, at, kind',
+      settings: 'id',
+    })
+    // v3: se elimina el Diario. Ya no hay log de actividad global: la fecha
+    // de "visto" vive junto a cada episodio/película/libro y es editable.
+    this.version(3).stores({
+      items: 'id, type, status, title, addedAt',
+      episodes: 'id, itemId, [itemId+season], watchedAt',
+      activity: null,
       settings: 'id',
     })
   }

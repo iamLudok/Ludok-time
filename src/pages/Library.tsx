@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import ItemCard from '../components/ItemCard'
+import ContinueWatching from '../components/ContinueWatching'
 import type { Item, MediaType, Status } from '../types'
 
 type TypeFilter = 'all' | MediaType
@@ -40,10 +41,13 @@ export default function Library() {
   const filtered = library.filter(
     (i) => matchesType(i) && (status === 'all' || i.status === status),
   )
+  const watchingSeries = library.filter((i) => i.type === 'series' && i.status === 'watching')
 
   return (
     <div>
       <h2 className="page-title">Mi biblioteca</h2>
+
+      <ContinueWatching items={watchingSeries} />
 
       <div className="chip-row" style={{ marginBottom: 10 }}>
         {TYPE_FILTERS.map((f) => (

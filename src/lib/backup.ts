@@ -4,10 +4,9 @@ import type { BackupFile } from '../types'
 
 /** Serializa TODA la base de datos a un objeto de copia. */
 export async function exportAll(): Promise<BackupFile> {
-  const [items, episodes, activity, settings] = await Promise.all([
+  const [items, episodes, settings] = await Promise.all([
     db.items.toArray(),
     db.episodes.toArray(),
-    db.activity.toArray(),
     getSettings(),
   ])
   return {
@@ -16,7 +15,6 @@ export async function exportAll(): Promise<BackupFile> {
     exportedAt: Date.now(),
     items,
     episodes,
-    activity,
     settings,
   }
 }
@@ -65,7 +63,6 @@ export async function downloadBackup(): Promise<void> {
 export interface ImportResult {
   items: number
   episodes: number
-  activity: number
 }
 
 /**
@@ -91,13 +88,12 @@ export async function importBackup(
     )
   }
 
-  await db.transaction('rw', db.items, db.episodes, db.activity, db.settings, async () => {
+  await db.transaction('rw', db.items, db.episodes, db.settings, async () => {
     if (mode === 'replace') {
-      await Promise.all([db.items.clear(), db.episodes.clear(), db.activity.clear()])
+      await Promise.all([db.items.clear(), db.episodes.clear()])
     }
     if (parsed.items?.length) await db.items.bulkPut(parsed.items)
     if (parsed.episodes?.length) await db.episodes.bulkPut(parsed.episodes)
-    if (parsed.activity?.length) await db.activity.bulkPut(parsed.activity)
     // Restauramos la API key y el tema, pero conservamos schemaVersion actual.
     if (parsed.settings) {
       const current = await getSettings()
@@ -113,7 +109,6 @@ export async function importBackup(
   return {
     items: parsed.items?.length ?? 0,
     episodes: parsed.episodes?.length ?? 0,
-    activity: parsed.activity?.length ?? 0,
   }
 }
 

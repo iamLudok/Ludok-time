@@ -28,22 +28,28 @@ npm run preview  # sirve el build (para probar la PWA instalable)
 | 📖 Libros | Open Library (sin API key) | **Por página**, con % leído |
 | ▶️ Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
 
-**Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca, el diario ni
-en los contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y
+**Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca ni en los
+contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y
 sepultarían el resto.
 
-## El Diario
+## Continuar viendo
 
-Es el historial cronológico de **qué has visto o leído y cuándo** (el equivalente al feed de TV
-Time). Solo registra consumo real: episodio visto, película vista, libro terminado. No apunta
-altas, valoraciones ni cambios de estado — eso sería ruido, no historial.
+En la Biblioteca, arriba de todo, aparece un bloque con tus series en estado "Viendo" y su
+próximo episodio, con un botón para marcarlo visto ahí mismo — sin entrar en la ficha.
 
-### Recuperando tu historial antiguo (p. ej. de TV Time)
+## Fechas de "visto" (editables)
 
-Si vas a marcar de golpe cosas que ya viste **antes** de usar esta app, activa primero
-**Ajustes → Puesta al día**. Mientras esté encendido, marcar algo como visto sigue actualizando
-el progreso y el estado con normalidad, pero **no** escribe en el diario — así no queda como si
-hubieras visto 50 episodios en el mismo minuto. Apágalo cuando termines de ponerte al día.
+No hay un diario global: cada episodio, película o libro muestra su propia fecha de "visto"
+(junto al episodio, en su ficha). Al marcar algo se guarda "hoy", pero puedes tocar la fecha
+(✏️) y ponerla a mano si sabes que lo viste hace tiempo — útil al recuperar historial antiguo
+(p. ej. de TV Time) sin que quede como si lo hubieras visto todo en el mismo minuto.
+
+## Dónde verla y próximo episodio
+
+En la ficha de cada serie/película se consulta TMDB en vivo (datos de JustWatch) para mostrar en
+qué plataformas está disponible en España — con suscripción, alquiler o compra. En series en
+emisión, si TMDB ya anuncia el próximo episodio y aún no lo tienes localmente, aparece una cuenta
+atrás ("en 12 días", "mañana"…) con un botón para traerlo en cuanto esté disponible.
 
 ### Importar tu historial de YouTube
 
@@ -95,7 +101,7 @@ elegir **GitHub Actions** (no "Deploy from a branch").
 El código y los datos viven en sitios separados:
 
 - **El código** (HTML/JS) lo sirve el service worker → es lo que se actualiza.
-- **Tus datos** (biblioteca, episodios vistos, valoraciones, diario, API key) están en
+- **Tus datos** (biblioteca, episodios vistos, valoraciones, API key) están en
   **IndexedDB** → una actualización **no los toca nunca**.
 
 Es decir: puedes actualizar mil veces sin perder nada. Está verificado desplegando una versión
@@ -125,13 +131,12 @@ En escritorio (Chrome/Edge) aparece un icono de instalar en la barra de direccio
 
 ```
 src/
-  lib/         # lógica: db (Dexie), tmdb, backup, library, settings, persistencia
-  components/  # ItemCard, EpisodeList, DetailControls, BackupBanner, RatingInput
-  pages/       # Library, Search, SeriesDetail, MovieDetail, Timeline, Stats, Settings
+  lib/         # lógica: db (Dexie), tmdb, openlibrary, youtube, backup, library, settings
+  components/  # ItemCard, EpisodeList, ContinueWatching, WhereToWatch, NextEpisodeCountdown…
+  pages/       # Library, Search, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
   types.ts     # modelo de datos
 ```
 
-## Próximos pasos (fuera del MVP)
+## Próximos pasos
 
-- 📖 Libros (Open Library) y ▶️ vídeos de YouTube (oEmbed + importar de Google Takeout).
 - Auto-guardado de la copia en una carpeta/nube propia.

@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import { setBookProgress, bookPercent, statusLabel, updateItem } from '../lib/library'
 import DetailControls from '../components/DetailControls'
+import WatchedDate from '../components/WatchedDate'
 import { toast } from '../lib/toast'
 
 export default function BookDetail() {
@@ -76,6 +77,15 @@ export default function BookDetail() {
               {statusLabel(item.status, 'book')}
             </span>
           </div>
+          {item.status === 'completed' && item.completedAt && (
+            <div style={{ marginTop: 6 }}>
+              <WatchedDate
+                timestamp={item.completedAt}
+                label="Leído"
+                onChange={(ts) => updateItem(item.id, { completedAt: ts })}
+              />
+            </div>
+          )}
         </div>
       </div>
 

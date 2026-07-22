@@ -8,7 +8,6 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   lastBackup: 0,
   schemaVersion: SCHEMA_VERSION,
-  catchUpMode: false,
 }
 
 /**

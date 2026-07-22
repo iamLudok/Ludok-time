@@ -1,4 +1,10 @@
-import { setEpisodeWatched, markWatchedUpTo, setSeasonWatched } from '../lib/library'
+import {
+  setEpisodeWatched,
+  setEpisodeWatchedAt,
+  markWatchedUpTo,
+  setSeasonWatched,
+} from '../lib/library'
+import WatchedDate from './WatchedDate'
 import type { Episode } from '../types'
 
 function groupBySeason(eps: Episode[]): Map<number, Episode[]> {
@@ -13,7 +19,7 @@ function groupBySeason(eps: Episode[]): Map<number, Episode[]> {
 export default function EpisodeList({ itemId, episodes }: { itemId: string; episodes: Episode[] }) {
   const seasons = groupBySeason(episodes)
 
-  const toggleSeason = async (itemId: string, seasonEps: Episode[]) => {
+  const toggleSeason = async (seasonEps: Episode[]) => {
     const allWatched = seasonEps.every((e) => e.watched)
     await setSeasonWatched(itemId, seasonEps, !allWatched)
   }
@@ -32,7 +38,7 @@ export default function EpisodeList({ itemId, episodes }: { itemId: string; epis
                   ({watched}/{seasonEps.length})
                 </span>
               </span>
-              <button className="btn btn-sm" onClick={() => toggleSeason(itemId, seasonEps)}>
+              <button className="btn btn-sm" onClick={() => toggleSeason(seasonEps)}>
                 {allWatched ? 'Desmarcar' : 'Marcar toda'}
               </button>
             </div>
@@ -49,7 +55,13 @@ export default function EpisodeList({ itemId, episodes }: { itemId: string; epis
                   <div className="ep-title">
                     {e.episode}. {e.title || 'Episodio ' + e.episode}
                   </div>
-                  {e.airDate && <div className="poster-sub">{e.airDate}</div>}
+                  {e.airDate && <div className="poster-sub">Emitido: {e.airDate}</div>}
+                  {e.watched && e.watchedAt && (
+                    <WatchedDate
+                      timestamp={e.watchedAt}
+                      onChange={(ts) => setEpisodeWatchedAt(e.id, ts)}
+                    />
+                  )}
                 </div>
                 {!e.watched && (
                   <button

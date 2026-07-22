@@ -1,27 +1,6 @@
 import { db, newId } from './db'
 import { getMovie, getSeries, getSeasonEpisodes, posterUrl } from './tmdb'
-import { getSettings } from './settings'
-import type { Item, Episode, Activity, ActivityKind, MediaType, Status } from '../types'
-
-/**
- * Registra una entrada de consumo en el diario ("he visto/leído X").
- * En modo "puesta al día" (ver Settings.catchUpMode) no escribe nada: sirve
- * para volcar historial antiguo sin ensuciar el diario con fechas falsas.
- * `at` permite fijar el momento exacto (para conservar el orden real al
- * marcar varios episodios de golpe).
- */
-async function logActivity(
-  itemId: string,
-  kind: ActivityKind,
-  label: string,
-  episodeId?: string,
-  at: number = Date.now(),
-): Promise<void> {
-  const { catchUpMode } = await getSettings()
-  if (catchUpMode) return
-  const entry: Activity = { id: newId(), itemId, episodeId, kind, label, at }
-  await db.activity.add(entry)
-}
+import type { Item, Episode, MediaType, Status } from '../types'
 
 /** Añade una película desde TMDB a la biblioteca. Devuelve el id local. */
 export async function addMovieFromTmdb(
@@ -55,7 +34,6 @@ export async function addMovieFromTmdb(
     completedAt: status === 'completed' ? Date.now() : undefined,
   }
   await db.items.add(item)
-  if (status === 'completed') await logActivity(item.id, 'watched_movie', item.title)
   return item.id
 }
 
@@ -105,7 +83,43 @@ export async function addSeriesFromTmdb(tmdbId: number, status: Status = 'plan')
   return itemId
 }
 
-function epLabel(ep: Episode): string {
+/**
+ * Vuelve a consultar TMDB y añade los episodios nuevos que falten (series en
+ * emisión). No toca los episodios ya guardados: nunca pisa su estado "visto".
+ * Devuelve cuántos episodios nuevos se añadieron.
+ */
+export async function syncSeriesEpisodes(itemId: string): Promise<number> {
+  const item = await db.items.get(itemId)
+  if (!item || item.type !== 'series' || item.source !== 'tmdb' || !item.sourceId) return 0
+  const tmdbId = Number(item.sourceId)
+
+  const [s, existing] = await Promise.all([
+    getSeries(tmdbId),
+    db.episodes.where('itemId').equals(itemId).toArray(),
+  ])
+  const have = new Set(existing.map((e) => `${e.season}-${e.episode}`))
+
+  const seasons = await Promise.all(
+    s.seasons.map((season) => getSeasonEpisodes(tmdbId, season.seasonNumber)),
+  )
+  const nuevos: Episode[] = seasons
+    .flat()
+    .filter((e) => !have.has(`${e.season}-${e.episode}`))
+    .map((e) => ({
+      id: newId(),
+      itemId,
+      season: e.season,
+      episode: e.episode,
+      title: e.title,
+      airDate: e.airDate,
+      runtime: e.runtime,
+      watched: false,
+    }))
+  if (nuevos.length) await db.episodes.bulkAdd(nuevos)
+  return nuevos.length
+}
+
+export function epLabel(ep: Episode): string {
   const code = `S${ep.season}E${ep.episode}`
   return ep.title ? `${code} · ${ep.title}` : code
 }
@@ -118,25 +132,20 @@ export async function setEpisodeWatched(episodeId: string, watched: boolean): Pr
     watched,
     watchedAt: watched ? Date.now() : undefined,
   })
-  // Desmarcar es corregir un error, no "consumo": no genera entrada de diario.
-  if (watched) await logActivity(ep.itemId, 'watched_episode', epLabel(ep), episodeId)
   await recomputeSeriesStatus(ep.itemId)
 }
 
-/**
- * Marca como vistos varios episodios de golpe (p. ej. "hasta aquí" o toda una
- * temporada). Cada uno genera SU PROPIA entrada en el diario —no un mensaje
- * agregado tipo "6 episodios hasta X"— con marcas de tiempo escalonadas en
- * milisegundos para conservar el orden real dentro del mismo minuto.
- */
+/** Cambia la fecha en que marcaste visto un episodio ya marcado (para reflejar cuándo lo viste de verdad, no cuándo lo registraste). */
+export async function setEpisodeWatchedAt(episodeId: string, watchedAt: number): Promise<void> {
+  await db.episodes.update(episodeId, { watchedAt })
+}
+
+/** Marca como vistos varios episodios de golpe (p. ej. "hasta aquí" o toda una temporada). */
 async function markManyWatched(itemId: string, episodes: Episode[]): Promise<void> {
   const toMark = episodes.filter((e) => !e.watched)
   if (!toMark.length) return
-  const base = Date.now()
-  await db.episodes.bulkPut(toMark.map((e, i) => ({ ...e, watched: true, watchedAt: base + i })))
-  for (let i = 0; i < toMark.length; i++) {
-    await logActivity(itemId, 'watched_episode', epLabel(toMark[i]), toMark[i].id, base + i)
-  }
+  const now = Date.now()
+  await db.episodes.bulkPut(toMark.map((e) => ({ ...e, watched: true, watchedAt: now })))
   await recomputeSeriesStatus(itemId)
 }
 
@@ -158,7 +167,6 @@ export async function setSeasonWatched(
     await markManyWatched(itemId, episodes)
     return
   }
-  // Desmarcar tampoco genera entradas de diario (ver setEpisodeWatched).
   await db.episodes.bulkPut(episodes.map((e) => ({ ...e, watched: false, watchedAt: undefined })))
   await recomputeSeriesStatus(itemId)
 }
@@ -228,9 +236,6 @@ export async function setStatus(itemId: string, status: Status): Promise<void> {
   if (status === 'completed' && !item.completedAt) patch.completedAt = Date.now()
   if (status === 'watching' && !item.startedAt) patch.startedAt = Date.now()
   await db.items.update(itemId, patch)
-  if (status === 'completed' && item.type === 'movie') {
-    await logActivity(itemId, 'watched_movie', item.title)
-  }
 }
 
 export async function setRating(itemId: string, rating: number): Promise<void> {
@@ -241,11 +246,10 @@ export async function updateItem(itemId: string, patch: Partial<Item>): Promise<
   await db.items.update(itemId, patch)
 }
 
-/** Borra un item y todo lo asociado (episodios y actividad). */
+/** Borra un item y todo lo asociado (episodios). */
 export async function deleteItem(itemId: string): Promise<void> {
-  await db.transaction('rw', db.items, db.episodes, db.activity, async () => {
+  await db.transaction('rw', db.items, db.episodes, async () => {
     await db.episodes.where('itemId').equals(itemId).delete()
-    await db.activity.where('itemId').equals(itemId).delete()
     await db.items.delete(itemId)
   })
 }
@@ -305,11 +309,6 @@ export async function setBookProgress(itemId: string, currentPage: number): Prom
   }
 
   await db.items.update(itemId, patch)
-  // Terminar un libro sí es "consumo": entra en el diario. Los demás cambios
-  // de estado (empezar a leerlo, volver a "pendiente"…) no.
-  if (patch.status === 'completed' && item.status !== 'completed') {
-    await logActivity(itemId, 'book_finished', item.title)
-  }
 }
 
 /** Porcentaje leído de un libro (0 si no sabemos las páginas totales). */

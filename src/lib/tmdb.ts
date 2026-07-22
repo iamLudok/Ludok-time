@@ -6,7 +6,10 @@ import { getSettings } from './settings'
 const BASE = 'https://api.themoviedb.org/3'
 const IMG = 'https://image.tmdb.org/t/p'
 
-export function posterUrl(path?: string | null, size: 'w185' | 'w342' | 'w500' = 'w342'): string {
+export function posterUrl(
+  path?: string | null,
+  size: 'w92' | 'w185' | 'w342' | 'w500' = 'w342',
+): string {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return `${IMG}/${size}${path}`
@@ -110,6 +113,13 @@ export interface TmdbSeason {
   name: string
 }
 
+export interface TmdbNextEpisode {
+  season: number
+  episode: number
+  title?: string
+  airDate?: string
+}
+
 export interface TmdbSeries {
   id: number
   title: string
@@ -118,6 +128,9 @@ export interface TmdbSeries {
   year?: number
   episodeRuntime?: number
   seasons: TmdbSeason[]
+  /** Próximo episodio a emitir, si la serie sigue en emisión y TMDB lo sabe. */
+  nextEpisode?: TmdbNextEpisode
+  status?: string
 }
 
 export async function getSeries(id: number): Promise<TmdbSeries> {
@@ -128,7 +141,14 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
     overview?: string
     first_air_date?: string
     episode_run_time?: number[]
+    status?: string
     seasons?: Array<{ season_number: number; episode_count: number; name: string }>
+    next_episode_to_air?: {
+      season_number: number
+      episode_number: number
+      name?: string
+      air_date?: string
+    } | null
   }>(`/tv/${id}`)
   return {
     id: raw.id,
@@ -137,6 +157,7 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
     overview: raw.overview,
     year: yearFrom(raw.first_air_date),
     episodeRuntime: raw.episode_run_time?.[0],
+    status: raw.status,
     seasons: (raw.seasons ?? [])
       .filter((s) => s.season_number > 0) // ignoramos "Especiales" (temporada 0)
       .map((s) => ({
@@ -144,6 +165,14 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
         episodeCount: s.episode_count,
         name: s.name,
       })),
+    nextEpisode: raw.next_episode_to_air
+      ? {
+          season: raw.next_episode_to_air.season_number,
+          episode: raw.next_episode_to_air.episode_number,
+          title: raw.next_episode_to_air.name,
+          airDate: raw.next_episode_to_air.air_date,
+        }
+      : undefined,
   }
 }
 
@@ -172,4 +201,58 @@ export async function getSeasonEpisodes(seriesId: number, season: number): Promi
     airDate: e.air_date,
     runtime: e.runtime,
   }))
+}
+
+export interface WatchProvider {
+  name: string
+  logoUrl: string
+  /** 'flatrate' = suscripción, 'rent' = alquiler, 'buy' = compra. */
+  type: 'flatrate' | 'rent' | 'buy'
+}
+
+export interface WatchProviders {
+  /** Enlace de TMDB con el listado completo para este país. */
+  link?: string
+  providers: WatchProvider[]
+}
+
+interface RawProvider {
+  provider_name: string
+  logo_path: string
+}
+
+/**
+ * Dónde ver una serie/película: datos de JustWatch servidos por TMDB, por país.
+ * Es una consulta en vivo (no se guarda nada): la disponibilidad cambia con
+ * el tiempo y no queremos mostrar datos caducados.
+ */
+export async function getWatchProviders(
+  id: number,
+  kind: 'movie' | 'tv',
+  region = 'ES',
+): Promise<WatchProviders> {
+  const raw = await tmdbFetch<{
+    results?: Record<
+      string,
+      { link?: string; flatrate?: RawProvider[]; rent?: RawProvider[]; buy?: RawProvider[] }
+    >
+  }>(`/${kind}/${id}/watch/providers`)
+  const forRegion = raw.results?.[region]
+  if (!forRegion) return { providers: [] }
+
+  const mapList = (list: RawProvider[] | undefined, type: WatchProvider['type']): WatchProvider[] =>
+    (list ?? []).map((p) => ({
+      name: p.provider_name,
+      logoUrl: posterUrl(p.logo_path, 'w92'),
+      type,
+    }))
+
+  return {
+    link: forRegion.link,
+    providers: [
+      ...mapList(forRegion.flatrate, 'flatrate'),
+      ...mapList(forRegion.rent, 'rent'),
+      ...mapList(forRegion.buy, 'buy'),
+    ],
+  }
 }

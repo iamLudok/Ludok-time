@@ -4,6 +4,8 @@ import { db } from '../lib/db'
 import { setEpisodeWatched } from '../lib/library'
 import EpisodeList from '../components/EpisodeList'
 import DetailControls from '../components/DetailControls'
+import WhereToWatch from '../components/WhereToWatch'
+import NextEpisodeCountdown from '../components/NextEpisodeCountdown'
 import { toast } from '../lib/toast'
 import type { Episode } from '../types'
 
@@ -65,10 +67,22 @@ export default function SeriesDetail() {
         </div>
       </div>
 
+      {item.source === 'tmdb' && item.sourceId && (
+        <NextEpisodeCountdown
+          itemId={item.id}
+          tmdbId={Number(item.sourceId)}
+          localEpisodes={sorted}
+        />
+      )}
+
       {item.overview && (
         <p className="muted" style={{ fontSize: '0.9rem' }}>
           {item.overview}
         </p>
+      )}
+
+      {item.source === 'tmdb' && item.sourceId && (
+        <WhereToWatch tmdbId={Number(item.sourceId)} kind="tv" />
       )}
 
       <DetailControls item={item} />

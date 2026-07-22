@@ -1,8 +1,10 @@
 import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { setStatus, statusLabel } from '../lib/library'
+import { setStatus, statusLabel, updateItem } from '../lib/library'
 import DetailControls from '../components/DetailControls'
+import WatchedDate from '../components/WatchedDate'
+import WhereToWatch from '../components/WhereToWatch'
 import { toast } from '../lib/toast'
 
 export default function MovieDetail() {
@@ -53,6 +55,14 @@ export default function MovieDetail() {
           >
             {watched ? '✓ Vista (desmarcar)' : '▶ Marcar como vista'}
           </button>
+          {watched && item.completedAt && (
+            <div style={{ marginTop: 6 }}>
+              <WatchedDate
+                timestamp={item.completedAt}
+                onChange={(ts) => updateItem(item.id, { completedAt: ts })}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -60,6 +70,10 @@ export default function MovieDetail() {
         <p className="muted" style={{ fontSize: '0.9rem' }}>
           {item.overview}
         </p>
+      )}
+
+      {item.source === 'tmdb' && item.sourceId && (
+        <WhereToWatch tmdbId={Number(item.sourceId)} kind="movie" />
       )}
 
       <DetailControls item={item} />

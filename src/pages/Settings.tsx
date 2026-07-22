@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useSettings, updateSettings } from '../lib/settings'
 import { downloadBackup, importBackup, daysSinceBackup } from '../lib/backup'
 import { getStorageInfo, requestPersistentStorage, type StorageInfo } from '../lib/persistence'
@@ -105,28 +104,6 @@ export default function SettingsPage() {
             style={{ display: 'none' }}
           />
         </div>
-      </section>
-
-      {/* Puesta al día */}
-      <section className="card">
-        <h3 style={{ marginTop: 0 }}>📥 Puesta al día</h3>
-        <p className="muted" style={{ fontSize: '0.88rem' }}>
-          El <Link to="/timeline" style={{ color: 'var(--accent-2)' }}>Diario</Link> es un
-          registro de qué has visto o leído <strong>y cuándo</strong>. Si vas a marcar de golpe
-          episodios, pelis o libros que ya viste <em>antes</em> de usar esta app (recuperando tu
-          historial de TV Time, por ejemplo), actívalo: mientras esté encendido, marcar algo como
-          visto guarda el progreso pero <strong>no</strong> escribe en el diario. Actualiza el
-          progreso y el estado con normalidad.
-        </p>
-        <label className="row" style={{ gap: 10, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            style={{ width: 'auto' }}
-            checked={settings.catchUpMode}
-            onChange={(e) => updateSettings({ catchUpMode: e.target.checked })}
-          />
-          <span>{settings.catchUpMode ? 'Activado: no se registra nada en el diario' : 'Desactivado'}</span>
-        </label>
       </section>
 
       {/* Almacenamiento */}

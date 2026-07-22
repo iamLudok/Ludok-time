@@ -50,33 +50,12 @@ export interface Episode {
   watchedAt?: number
 }
 
-// El diario es un registro de CONSUMO ("qué he visto/leído y cuándo"), no un
-// log de toda acción sobre un título. Por eso solo hay estos tres tipos:
-// nada de "añadido", "valorado" ni "cambio de estado".
-export type ActivityKind = 'watched_episode' | 'watched_movie' | 'book_finished'
-
-export interface Activity {
-  id: string
-  itemId: string
-  episodeId?: string
-  kind: ActivityKind
-  /** texto legible para el diario, p.ej. "S1E3 · The Pilot". */
-  label: string
-  at: number
-}
-
 export interface Settings {
   id: 'app'
   tmdbApiKey: string
   theme: 'dark' | 'light' | 'system'
   lastBackup: number
   schemaVersion: number
-  /**
-   * Modo "puesta al día": al marcar episodios/pelis/libros como vistos NO se
-   * escribe en el diario. Pensado para volcar de golpe historial antiguo
-   * (p. ej. recuperado de TV Time) sin que parezca que lo viste todo hoy.
-   */
-  catchUpMode: boolean
 }
 
 /** Estructura del fichero de copia de seguridad (export/import). */
@@ -86,6 +65,5 @@ export interface BackupFile {
   exportedAt: number
   items: Item[]
   episodes: Episode[]
-  activity: Activity[]
   settings: Settings | null
 }
