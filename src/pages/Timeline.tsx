@@ -1,15 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
+import { useSettings } from '../lib/settings'
 import type { Activity, ActivityKind, Item } from '../types'
 
 const KIND_ICON: Record<ActivityKind, string> = {
   watched_episode: '📺',
-  unwatched_episode: '↩️',
   watched_movie: '🎬',
-  rated: '⭐',
-  status_change: '🔄',
-  added: '➕',
+  book_finished: '📖',
 }
 
 function dayLabel(ts: number): string {
@@ -33,6 +31,7 @@ function detailPath(item: Item): string {
 }
 
 export default function Timeline() {
+  const settings = useSettings()
   const activity = useLiveQuery(
     () => db.activity.orderBy('at').reverse().limit(300).toArray(),
     [],
@@ -41,13 +40,28 @@ export default function Timeline() {
   const items = useLiveQuery(() => db.items.toArray(), [], [])
   const itemMap = new Map((items ?? []).map((i) => [i.id, i]))
 
-  if (activity && activity.length === 0) {
+  // Filtro defensivo: si el navegador guardó actividad de una versión anterior
+  // (cuando el diario registraba "añadido"/"valorado"/etc.), la ignoramos aquí
+  // en vez de mostrarla o de tener que migrar la base de datos.
+  const consumo = (activity ?? []).filter((a) => a.kind in KIND_ICON)
+
+  const catchUpBanner = settings.catchUpMode && (
+    <div className="banner" style={{ marginLeft: 0, marginRight: 0 }}>
+      <span>
+        📥 Modo puesta al día activo: lo que marques ahora no aparecerá aquí. Apágalo en Ajustes
+        cuando termines de recuperar tu historial.
+      </span>
+    </div>
+  )
+
+  if (activity && consumo.length === 0) {
     return (
       <div>
         <h2 className="page-title">Diario</h2>
+        {catchUpBanner}
         <div className="empty">
           <div className="big">🕒</div>
-          <p>Aquí aparecerá todo lo que vayas viendo.</p>
+          <p>Aquí aparecerá lo que veas o leas a partir de ahora.</p>
         </div>
       </div>
     )
@@ -55,7 +69,7 @@ export default function Timeline() {
 
   // Agrupamos por día.
   const groups: { label: string; entries: Activity[] }[] = []
-  for (const a of activity ?? []) {
+  for (const a of consumo) {
     const label = dayLabel(a.at)
     const last = groups[groups.length - 1]
     if (last && last.label === label) last.entries.push(a)
@@ -65,6 +79,7 @@ export default function Timeline() {
   return (
     <div>
       <h2 className="page-title">Diario</h2>
+      {catchUpBanner}
       {groups.map((g) => (
         <div key={g.label} style={{ marginBottom: 18 }}>
           <div className="label" style={{ marginBottom: 8 }}>

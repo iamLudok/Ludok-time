@@ -1,5 +1,6 @@
 import { db, newId } from './db'
 import { getMovie, getSeries, getSeasonEpisodes, posterUrl } from './tmdb'
+import { getSettings } from './settings'
 import type { Item, Episode, Activity, ActivityKind, MediaType, Status } from '../types'
 
 /** Etiqueta que marca una serie como anime. */
@@ -10,12 +11,19 @@ export function isAnime(item: Pick<Item, 'type' | 'tags'>): boolean {
   return item.type === 'series' && item.tags.includes(ANIME_TAG)
 }
 
+/**
+ * Registra una entrada de consumo en el diario ("he visto/leído X").
+ * En modo "puesta al día" (ver Settings.catchUpMode) no escribe nada: sirve
+ * para volcar historial antiguo sin ensuciar el diario con fechas falsas.
+ */
 async function logActivity(
   itemId: string,
   kind: ActivityKind,
   label: string,
   episodeId?: string,
 ): Promise<void> {
+  const { catchUpMode } = await getSettings()
+  if (catchUpMode) return
   const entry: Activity = { id: newId(), itemId, episodeId, kind, label, at: Date.now() }
   await db.activity.add(entry)
 }
@@ -52,7 +60,6 @@ export async function addMovieFromTmdb(
     completedAt: status === 'completed' ? Date.now() : undefined,
   }
   await db.items.add(item)
-  await logActivity(item.id, 'added', item.title)
   if (status === 'completed') await logActivity(item.id, 'watched_movie', item.title)
   return item.id
 }
@@ -91,7 +98,6 @@ export async function addSeriesFromTmdb(
     addedAt: Date.now(),
   }
   await db.items.add(item)
-  await logActivity(itemId, 'added', item.title)
 
   // Traemos episodios de cada temporada en paralelo.
   const seasons = await Promise.all(
@@ -124,12 +130,8 @@ export async function setEpisodeWatched(episodeId: string, watched: boolean): Pr
     watched,
     watchedAt: watched ? Date.now() : undefined,
   })
-  await logActivity(
-    ep.itemId,
-    watched ? 'watched_episode' : 'unwatched_episode',
-    epLabel(ep),
-    episodeId,
-  )
+  // Desmarcar es corregir un error, no "consumo": no genera entrada de diario.
+  if (watched) await logActivity(ep.itemId, 'watched_episode', epLabel(ep), episodeId)
   await recomputeSeriesStatus(ep.itemId)
 }
 
@@ -180,7 +182,6 @@ async function recomputeSeriesStatus(itemId: string): Promise<void> {
   }
   if (Object.keys(patch).length) {
     await db.items.update(itemId, patch)
-    if (patch.status) await logActivity(itemId, 'status_change', statusLabel(patch.status))
   }
 }
 
@@ -213,7 +214,6 @@ export async function setStatus(itemId: string, status: Status): Promise<void> {
   if (status === 'completed' && !item.completedAt) patch.completedAt = Date.now()
   if (status === 'watching' && !item.startedAt) patch.startedAt = Date.now()
   await db.items.update(itemId, patch)
-  await logActivity(itemId, 'status_change', statusLabel(status))
   if (status === 'completed' && item.type === 'movie') {
     await logActivity(itemId, 'watched_movie', item.title)
   }
@@ -221,8 +221,6 @@ export async function setStatus(itemId: string, status: Status): Promise<void> {
 
 export async function setRating(itemId: string, rating: number): Promise<void> {
   await db.items.update(itemId, { rating })
-  const item = await db.items.get(itemId)
-  if (item) await logActivity(itemId, 'rated', `${rating}/10 · ${item.title}`)
 }
 
 export async function updateItem(itemId: string, patch: Partial<Item>): Promise<void> {
@@ -269,7 +267,6 @@ export async function addBook(
     addedAt: Date.now(),
   }
   await db.items.add(item)
-  await logActivity(item.id, 'added', item.title)
   return item.id
 }
 
@@ -294,8 +291,10 @@ export async function setBookProgress(itemId: string, currentPage: number): Prom
   }
 
   await db.items.update(itemId, patch)
-  if (patch.status && patch.status !== item.status) {
-    await logActivity(itemId, 'status_change', statusLabel(patch.status, 'book'))
+  // Terminar un libro sí es "consumo": entra en el diario. Los demás cambios
+  // de estado (empezar a leerlo, volver a "pendiente"…) no.
+  if (patch.status === 'completed' && item.status !== 'completed') {
+    await logActivity(itemId, 'book_finished', item.title)
   }
 }
 

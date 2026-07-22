@@ -35,6 +35,19 @@ duplicar categorías.
 en los contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y
 sepultarían el resto.
 
+## El Diario
+
+Es el historial cronológico de **qué has visto o leído y cuándo** (el equivalente al feed de TV
+Time). Solo registra consumo real: episodio visto, película vista, libro terminado. No apunta
+altas, valoraciones ni cambios de estado — eso sería ruido, no historial.
+
+### Recuperando tu historial antiguo (p. ej. de TV Time)
+
+Si vas a marcar de golpe cosas que ya viste **antes** de usar esta app, activa primero
+**Ajustes → Puesta al día**. Mientras esté encendido, marcar algo como visto sigue actualizando
+el progreso y el estado con normalidad, pero **no** escribe en el diario — así no queda como si
+hubieras visto 50 episodios en el mismo minuto. Apágalo cuando termines de ponerte al día.
+
 ### Importar tu historial de YouTube
 
 1. Ve a [Google Takeout](https://takeout.google.com/) y pide **solo YouTube → historial**, en **JSON**.
