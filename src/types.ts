@@ -21,6 +21,14 @@ export interface Item {
   year?: number
   /** duración en minutos (películas) o duración media de episodio (series). */
   runtime?: number
+  /** autor del libro o canal del vídeo de YouTube. */
+  author?: string
+  /** enlace original (vídeos de YouTube). */
+  url?: string
+  /** páginas totales del libro. */
+  totalPages?: number
+  /** por qué página vas (libros). */
+  currentPage?: number
   status: Status
   /** valoración 0–10, 0 = sin valorar. */
   rating: number

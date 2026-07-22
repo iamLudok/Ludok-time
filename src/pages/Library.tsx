@@ -7,13 +7,14 @@ import { isAnime } from '../lib/library'
 import type { Item, Status } from '../types'
 
 // 'anime' no es un tipo real: filtra series con la etiqueta anime.
-type TypeFilter = 'all' | 'series' | 'anime' | 'movie'
+type TypeFilter = 'all' | 'series' | 'anime' | 'movie' | 'book'
 
 const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
   { key: 'all', label: 'Todo' },
   { key: 'series', label: '📺 Series' },
   { key: 'anime', label: '🌸 Anime' },
   { key: 'movie', label: '🎬 Pelis' },
+  { key: 'book', label: '📖 Libros' },
 ]
 
 const STATUS_FILTERS: { key: Status | 'all'; label: string }[] = [
@@ -41,7 +42,10 @@ export default function Library() {
     if (type === 'series') return i.type === 'series' && !isAnime(i)
     return i.type === type
   }
-  const filtered = (items ?? []).filter(
+  // Los vídeos de YouTube viven en su propia sección: pueden ser miles y
+  // ahogarían la biblioteca.
+  const library = (items ?? []).filter((i) => i.type !== 'youtube')
+  const filtered = library.filter(
     (i) => matchesType(i) && (status === 'all' || i.status === status),
   )
 
@@ -76,9 +80,7 @@ export default function Library() {
         <div className="empty">
           <div className="big">🍿</div>
           <p>
-            {items && items.length === 0
-              ? 'Tu biblioteca está vacía.'
-              : 'Nada con estos filtros.'}
+            {library.length === 0 ? 'Tu biblioteca está vacía.' : 'Nada con estos filtros.'}
           </p>
           <Link to="/search" className="btn btn-primary">
             Añadir algo

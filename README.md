@@ -1,8 +1,8 @@
 # Ludok Time 🎬📺
 
-Tu app personal para apuntar todo lo que ves: **series, películas y anime** (con hueco para
-libros y YouTube más adelante). Nació porque TV Time se cayó y no quiero volver a perder mi
-historial: aquí **los datos son míos** y viven en mi dispositivo.
+Tu app personal para apuntar todo lo que ves y lees: **series, películas, anime, libros y vídeos
+de YouTube**. Nació porque TV Time se cayó y no quiero volver a perder mi historial: aquí
+**los datos son míos** y viven en mi dispositivo.
 
 - **Local-first**: todo se guarda en el navegador (IndexedDB). Sin servidores, sin cuentas.
 - **A prueba de pérdidas**: exporta/importa una copia JSON cuando quieras y un aviso te recuerda
@@ -18,6 +18,30 @@ npm run dev      # desarrollo en http://localhost:5173
 npm run build    # build de producción en dist/
 npm run preview  # sirve el build (para probar la PWA instalable)
 ```
+
+## Qué puedes registrar
+
+| Tipo | Fuente | Cómo se sigue el progreso |
+|---|---|---|
+| 📺 Series / 🌸 Anime | TMDB | Episodio a episodio, con "ver siguiente" |
+| 🎬 Películas | TMDB | Vista / pendiente |
+| 📖 Libros | Open Library (sin API key) | **Por página**, con % leído |
+| ▶️ Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
+
+**El anime** no es un tipo aparte: es una serie con la etiqueta `anime`, así puedes filtrarla sin
+duplicar categorías.
+
+**Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca, el diario ni
+en los contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y
+sepultarían el resto.
+
+### Importar tu historial de YouTube
+
+1. Ve a [Google Takeout](https://takeout.google.com/) y pide **solo YouTube → historial**, en **JSON**.
+2. En la app: pestaña **Vídeos → Subir watch-history.json**.
+
+Se ignoran anuncios y vídeos borrados, no se duplican los repetidos y se respeta la fecha real en
+que viste cada uno.
 
 ## Configurar la API key de TMDB (gratis, 2 minutos)
 

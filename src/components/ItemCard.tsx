@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { statusLabel, isAnime } from '../lib/library'
+import { statusLabel, isAnime, bookPercent } from '../lib/library'
 import type { Episode, Item } from '../types'
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -19,6 +19,7 @@ function itemEmoji(item: Item): string {
 
 function detailPath(item: Item): string {
   if (item.type === 'series') return `/series/${item.id}`
+  if (item.type === 'book') return `/book/${item.id}`
   return `/movie/${item.id}`
 }
 
@@ -60,8 +61,19 @@ export default function ItemCard({ item }: { item: Item }) {
               {watched}/{total} episodios
             </div>
           </>
+        ) : item.type === 'book' && item.totalPages ? (
+          <>
+            <div className="progress">
+              <span style={{ width: `${bookPercent(item)}%` }} />
+            </div>
+            <div className="poster-sub">
+              {item.currentPage ?? 0}/{item.totalPages} págs.
+            </div>
+          </>
         ) : (
-          <span className={'badge status-' + item.status}>{statusLabel(item.status)}</span>
+          <span className={'badge status-' + item.status}>
+            {statusLabel(item.status, item.type)}
+          </span>
         )}
       </div>
     </Link>

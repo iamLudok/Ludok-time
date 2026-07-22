@@ -27,7 +27,9 @@ function time(ts: number): string {
 }
 
 function detailPath(item: Item): string {
-  return item.type === 'series' ? `/series/${item.id}` : `/movie/${item.id}`
+  if (item.type === 'series') return `/series/${item.id}`
+  if (item.type === 'book') return `/book/${item.id}`
+  return `/movie/${item.id}`
 }
 
 export default function Timeline() {

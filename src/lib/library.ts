@@ -184,7 +184,18 @@ async function recomputeSeriesStatus(itemId: string): Promise<void> {
   }
 }
 
-export function statusLabel(status: Status): string {
+export function statusLabel(status: Status, type?: MediaType): string {
+  // Los libros se leen, no se ven: cambiamos el vocabulario.
+  if (type === 'book') {
+    const books: Record<Status, string> = {
+      plan: 'Pendiente',
+      watching: 'Leyendo',
+      completed: 'Leído',
+      on_hold: 'En pausa',
+      dropped: 'Abandonado',
+    }
+    return books[status]
+  }
   const map: Record<Status, string> = {
     plan: 'Pendiente',
     watching: 'Viendo',
@@ -225,6 +236,172 @@ export async function deleteItem(itemId: string): Promise<void> {
     await db.activity.where('itemId').equals(itemId).delete()
     await db.items.delete(itemId)
   })
+}
+
+// --- Libros -----------------------------------------------------------------
+
+/** Añade un libro desde Open Library. Devuelve el id local. */
+export async function addBook(
+  book: { key: string; title: string; author?: string; year?: number; cover?: string; pages?: number },
+  status: Status = 'plan',
+): Promise<string> {
+  const existing = await db.items
+    .where('type')
+    .equals('book')
+    .and((i) => i.source === 'openlibrary' && i.sourceId === book.key)
+    .first()
+  if (existing) return existing.id
+
+  const item: Item = {
+    id: newId(),
+    type: 'book',
+    source: 'openlibrary',
+    sourceId: book.key,
+    title: book.title,
+    author: book.author,
+    poster: book.cover,
+    year: book.year,
+    totalPages: book.pages,
+    currentPage: 0,
+    status,
+    rating: 0,
+    tags: [],
+    addedAt: Date.now(),
+  }
+  await db.items.add(item)
+  await logActivity(item.id, 'added', item.title)
+  return item.id
+}
+
+/** Actualiza por qué página vas y ajusta el estado en consecuencia. */
+export async function setBookProgress(itemId: string, currentPage: number): Promise<void> {
+  const item = await db.items.get(itemId)
+  if (!item || item.type !== 'book') return
+
+  const total = item.totalPages ?? 0
+  const page = Math.max(0, total ? Math.min(currentPage, total) : currentPage)
+  const patch: Partial<Item> = { currentPage: page }
+
+  if (page === 0) {
+    patch.status = 'plan'
+  } else if (total && page >= total) {
+    patch.status = 'completed'
+    patch.completedAt = Date.now()
+    if (!item.startedAt) patch.startedAt = Date.now()
+  } else {
+    patch.status = 'watching' // "leyendo"
+    if (!item.startedAt) patch.startedAt = Date.now()
+  }
+
+  await db.items.update(itemId, patch)
+  if (patch.status && patch.status !== item.status) {
+    await logActivity(itemId, 'status_change', statusLabel(patch.status, 'book'))
+  }
+}
+
+/** Porcentaje leído de un libro (0 si no sabemos las páginas totales). */
+export function bookPercent(item: Item): number {
+  if (!item.totalPages || !item.currentPage) return 0
+  return Math.min(100, Math.round((item.currentPage / item.totalPages) * 100))
+}
+
+// --- Vídeos de YouTube ------------------------------------------------------
+// Nota: los vídeos NO generan entradas en el diario. Al importar historial
+// pueden ser miles y ahogarían el resto. Tienen su propia sección.
+
+export interface VideoInput {
+  videoId: string
+  title: string
+  channel?: string
+  watchedAt?: number
+}
+
+/** Añade un vídeo de YouTube. Devuelve el id local (o el existente si ya estaba). */
+export async function addVideo(video: VideoInput): Promise<string> {
+  const existing = await db.items
+    .where('type')
+    .equals('youtube')
+    .and((i) => i.sourceId === video.videoId)
+    .first()
+  if (existing) return existing.id
+
+  const watchedAt = video.watchedAt ?? Date.now()
+  const item: Item = {
+    id: newId(),
+    type: 'youtube',
+    source: 'youtube',
+    sourceId: video.videoId,
+    title: video.title,
+    author: video.channel,
+    poster: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`,
+    url: `https://www.youtube.com/watch?v=${video.videoId}`,
+    status: 'completed',
+    rating: 0,
+    tags: [],
+    addedAt: Date.now(),
+    startedAt: watchedAt,
+    completedAt: watchedAt,
+  }
+  await db.items.add(item)
+  return item.id
+}
+
+/** Añade un vídeo escrito a mano, sin enlace. */
+export async function addManualVideo(title: string): Promise<string> {
+  const item: Item = {
+    id: newId(),
+    type: 'youtube',
+    source: 'manual',
+    title,
+    status: 'completed',
+    rating: 0,
+    tags: [],
+    addedAt: Date.now(),
+    completedAt: Date.now(),
+  }
+  await db.items.add(item)
+  return item.id
+}
+
+export interface ImportVideosResult {
+  added: number
+  skipped: number
+}
+
+/** Importa muchos vídeos de golpe (historial de Takeout), evitando duplicados. */
+export async function importVideos(entries: VideoInput[]): Promise<ImportVideosResult> {
+  const existing = await db.items.where('type').equals('youtube').toArray()
+  const known = new Set(existing.map((i) => i.sourceId).filter(Boolean) as string[])
+
+  const nuevos: Item[] = []
+  let skipped = 0
+  for (const v of entries) {
+    if (known.has(v.videoId)) {
+      skipped++
+      continue
+    }
+    known.add(v.videoId)
+    const watchedAt = v.watchedAt ?? Date.now()
+    nuevos.push({
+      id: newId(),
+      type: 'youtube',
+      source: 'youtube',
+      sourceId: v.videoId,
+      title: v.title,
+      author: v.channel,
+      poster: `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
+      url: `https://www.youtube.com/watch?v=${v.videoId}`,
+      status: 'completed',
+      rating: 0,
+      tags: [],
+      addedAt: Date.now(),
+      startedAt: watchedAt,
+      completedAt: watchedAt,
+    })
+  }
+
+  if (nuevos.length) await db.items.bulkAdd(nuevos)
+  return { added: nuevos.length, skipped }
 }
 
 export interface Progress {

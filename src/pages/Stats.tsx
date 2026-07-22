@@ -16,12 +16,19 @@ export default function Stats() {
 
   if (!items || !episodes) return <div className="empty">Cargando…</div>
 
-  const series = items.filter((i) => i.type === 'series' && !isAnime(i)).length
-  const anime = items.filter((i) => isAnime(i)).length
-  const movies = items.filter((i) => i.type === 'movie')
+  // Los vídeos se cuentan aparte para no desvirtuar el resto de cifras.
+  const videos = items.filter((i) => i.type === 'youtube')
+  const library = items.filter((i) => i.type !== 'youtube')
+
+  const series = library.filter((i) => i.type === 'series' && !isAnime(i)).length
+  const anime = library.filter((i) => isAnime(i)).length
+  const movies = library.filter((i) => i.type === 'movie')
   const moviesWatched = movies.filter((i) => i.status === 'completed')
+  const books = library.filter((i) => i.type === 'book')
+  const booksRead = books.filter((i) => i.status === 'completed')
+  const pagesRead = books.reduce((sum, b) => sum + (b.currentPage ?? 0), 0)
   const watchedEps = episodes.filter((e) => e.watched)
-  const completed = items.filter((i) => i.status === 'completed').length
+  const completed = library.filter((i) => i.status === 'completed').length
 
   // Tiempo estimado: episodios vistos * duración (o 40 min por defecto) + pelis vistas.
   const itemMap = new Map(items.map((i) => [i.id, i]))
@@ -32,14 +39,18 @@ export default function Stats() {
   for (const m of moviesWatched) minutes += m.runtime || 110
 
   const stats = [
-    { n: items.length, l: 'Títulos' },
+    { n: library.length, l: 'Títulos' },
     { n: series, l: 'Series' },
     { n: anime, l: 'Anime' },
     { n: movies.length, l: 'Películas' },
+    { n: books.length, l: 'Libros' },
     { n: watchedEps.length, l: 'Episodios vistos' },
     { n: moviesWatched.length, l: 'Pelis vistas' },
+    { n: booksRead.length, l: 'Libros leídos' },
+    { n: pagesRead, l: 'Páginas leídas' },
     { n: completed, l: 'Completados' },
     { n: fmtHours(minutes), l: 'Tiempo estimado' },
+    { n: videos.length, l: 'Vídeos guardados' },
   ]
 
   return (

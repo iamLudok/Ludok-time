@@ -127,14 +127,17 @@ textarea:focus {
 
 .nav a {
   flex: 1;
+  min-width: 0; /* permite que 6 pestañas quepan en pantallas estrechas */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  text-align: center;
   color: var(--text-dim);
-  padding-top: 6px;
+  padding: 6px 2px 0;
 }
 
 .nav a.active {

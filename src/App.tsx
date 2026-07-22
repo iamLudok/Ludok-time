@@ -6,6 +6,8 @@ import Library from './pages/Library'
 import Search from './pages/Search'
 import SeriesDetail from './pages/SeriesDetail'
 import MovieDetail from './pages/MovieDetail'
+import BookDetail from './pages/BookDetail'
+import Videos from './pages/Videos'
 import Timeline from './pages/Timeline'
 import Stats from './pages/Stats'
 import SettingsPage from './pages/Settings'
@@ -48,6 +50,8 @@ export default function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/series/:id" element={<SeriesDetail />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
+          <Route path="/book/:id" element={<BookDetail />} />
+          <Route path="/videos" element={<Videos />} />
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -60,6 +64,9 @@ export default function App() {
         </NavLink>
         <NavLink to="/search">
           <span className="ico">🔍</span>Añadir
+        </NavLink>
+        <NavLink to="/videos">
+          <span className="ico">▶️</span>Vídeos
         </NavLink>
         <NavLink to="/timeline">
           <span className="ico">🕒</span>Diario
