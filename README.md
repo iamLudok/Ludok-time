@@ -56,6 +56,29 @@ elegir **GitHub Actions** (no "Deploy from a branch").
 > ruta y el router usa `basename`. El build genera además un `404.html` para que los enlaces
 > directos (p. ej. `/Ludok-time/settings`) funcionen al recargar.
 
+## Cómo se actualiza la app (y por qué tus datos no corren peligro)
+
+El código y los datos viven en sitios separados:
+
+- **El código** (HTML/JS) lo sirve el service worker → es lo que se actualiza.
+- **Tus datos** (biblioteca, episodios vistos, valoraciones, diario, API key) están en
+  **IndexedDB** → una actualización **no los toca nunca**.
+
+Es decir: puedes actualizar mil veces sin perder nada. Está verificado desplegando una versión
+nueva encima de una instalación con datos y comprobando que seguían intactos.
+
+Detalle importante del funcionamiento de las PWA:
+
+> Tras publicar una versión nueva, **la primera vez que abres la app sigues viendo la vieja**.
+> El service worker se descarga la nueva por detrás y entra **en la siguiente apertura**.
+> Es normal, no es un fallo. Si tienes prisa, recarga con `Ctrl+Shift+R`.
+
+Para que no te quedes semanas con una versión antigua, [`src/lib/updates.ts`](src/lib/updates.ts)
+comprueba si hay versión nueva **cada hora y cada vez que vuelves a la app**.
+
+Además, las notas y etiquetas de cada título **se guardan solas** al salir del campo, así que ni
+siquiera se pierde texto a medio escribir.
+
 ## Instalar como app (PWA)
 
 Abre la web en el navegador del móvil y usa **"Añadir a pantalla de inicio"** / **"Instalar app"**.

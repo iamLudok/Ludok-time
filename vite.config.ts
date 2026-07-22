@@ -15,6 +15,8 @@ export default defineConfig(({ command, isPreview }) => {
     plugins: [
       react(),
       VitePWA({
+        // La app se actualiza sola: el código se reemplaza, los datos de IndexedDB
+        // (tu biblioteca) no se tocan nunca.
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png'],
         manifest: {

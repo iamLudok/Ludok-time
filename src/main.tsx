@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { requestPersistentStorage } from './lib/persistence'
 import { ensureSettings } from './lib/settings'
+import { watchForUpdates } from './lib/updates'
 import './index.css'
 
 // Pedimos almacenamiento persistente cuanto antes para que el navegador
@@ -11,6 +12,8 @@ import './index.css'
 requestPersistentStorage()
 // Persistimos los ajustes por defecto una sola vez (fuera de cualquier liveQuery).
 ensureSettings()
+// Buscamos versiones nuevas periódicamente (no solo al arrancar).
+watchForUpdates()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
