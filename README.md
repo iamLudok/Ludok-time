@@ -34,10 +34,12 @@ sepultarían el resto.
 
 ## Vista previa antes de añadir
 
-Al buscar (o desde "También te puede gustar"), puedes tocar la carátula/título — o el botón
-"👁 Ver detalles" — para ver una **ficha previa** de TMDB: sinopsis, temporadas con su número de
-episodios, y dónde verla. Nada se guarda hasta que pulsas "Añadir"; si el título ya está en tu
-biblioteca, en vez de añadir verás un botón para ir directo a su ficha real.
+Al buscar, cada resultado indica si es **📺 Serie** o **🎬 Película** y solo tiene un botón,
+"👁 Ver detalles" (nada de "Añadir" directo — siempre puedes añadirlo después de ver la ficha).
+Igual desde "También te puede gustar", tocando la carátula. La vista previa muestra datos de TMDB
+en vivo: sinopsis, temporadas con su número de episodios, y dónde verla. Nada se guarda hasta que
+pulsas "Añadir" dentro de la ficha previa; si el título ya está en tu biblioteca, en vez de
+añadir verás un botón para ir directo a su ficha real.
 
 ## Continuar viendo
 

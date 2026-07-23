@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { searchMulti, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { searchBooks, type BookResult } from '../lib/openlibrary'
 import { videoIdFromUrl, thumbnailUrl, fetchVideoInfo } from '../lib/youtube'
-import { addMovieFromTmdb, addSeriesFromTmdb, addBook, addVideo, addManualVideo } from '../lib/library'
+import { addBook, addVideo, addManualVideo } from '../lib/library'
 import { useSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
 
@@ -44,12 +44,10 @@ export default function Search() {
 
 function ScreenSearch() {
   const settings = useSettings()
-  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [addingId, setAddingId] = useState<number | null>(null)
 
   const doSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,22 +61,6 @@ function ScreenSearch() {
       setResults([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const add = async (r: TmdbSearchResult, kind: 'movie' | 'series') => {
-    setAddingId(r.id)
-    try {
-      const id =
-        kind === 'movie'
-          ? await addMovieFromTmdb(r.id, 'movie', 'plan')
-          : await addSeriesFromTmdb(r.id, 'plan')
-      toast(`Añadido: ${r.title}`)
-      navigate(kind === 'movie' ? `/movie/${id}` : `/series/${id}`)
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'No se pudo añadir')
-    } finally {
-      setAddingId(null)
     }
   }
 
@@ -122,21 +104,15 @@ function ScreenSearch() {
               <Link to={`/preview/${r.mediaType}/${r.id}`} style={{ fontWeight: 600 }}>
                 {r.title} {r.year ? <span className="muted">({r.year})</span> : null}
               </Link>
+              <div style={{ margin: '4px 0' }}>
+                <span className="badge">{r.mediaType === 'tv' ? '📺 Serie' : '🎬 Película'}</span>
+              </div>
               <p className="muted" style={{ fontSize: '0.82rem', margin: '4px 0 8px' }}>
                 {r.overview ? r.overview.slice(0, 120) + (r.overview.length > 120 ? '…' : '') : ''}
               </p>
-              <div className="chip-row">
-                <Link to={`/preview/${r.mediaType}/${r.id}`} className="btn btn-sm">
-                  👁 Ver detalles
-                </Link>
-                <button
-                  className="btn btn-sm btn-primary"
-                  disabled={addingId === r.id}
-                  onClick={() => add(r, r.mediaType === 'movie' ? 'movie' : 'series')}
-                >
-                  {addingId === r.id ? '…' : r.mediaType === 'movie' ? '🎬 Añadir' : '📺 Añadir'}
-                </button>
-              </div>
+              <Link to={`/preview/${r.mediaType}/${r.id}`} className="btn btn-sm btn-primary">
+                👁 Ver detalles
+              </Link>
             </div>
           </div>
         ))}
