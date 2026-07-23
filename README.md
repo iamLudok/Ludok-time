@@ -32,6 +32,13 @@ npm run preview  # sirve el build (para probar la PWA instalable)
 contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y
 sepultarían el resto.
 
+## Vista previa antes de añadir
+
+Al buscar (o desde "También te puede gustar"), puedes tocar la carátula/título — o el botón
+"👁 Ver detalles" — para ver una **ficha previa** de TMDB: sinopsis, temporadas con su número de
+episodios, y dónde verla. Nada se guarda hasta que pulsas "Añadir"; si el título ya está en tu
+biblioteca, en vez de añadir verás un botón para ir directo a su ficha real.
+
 ## Continuar viendo
 
 En la Biblioteca, arriba de todo, aparece un bloque con tus series en estado "Viendo" y su
@@ -62,8 +69,9 @@ aviso sobre el próximo episodio:
 ## También te puede gustar
 
 En la ficha de cada serie/película, una fila de carátulas parecidas por género/temática (TMDB
-"similar"), excluyendo lo que ya tienes en tu biblioteca. Se pueden añadir directamente con el
-botón "+", sin tener que ir a Buscar.
+"similar"), filtradas por **idioma original** para no mezclar cosas de fuera de sitio (p. ej. que
+un anime japonés recomiende series occidentales solo porque comparten género), y excluyendo lo que
+ya tienes en tu biblioteca. Se pueden añadir directamente con el botón "+", sin tener que ir a Buscar.
 
 ### Importar tu historial de YouTube
 
@@ -147,7 +155,7 @@ En escritorio (Chrome/Edge) aparece un icono de instalar en la barra de direccio
 src/
   lib/         # lógica: db (Dexie), tmdb, openlibrary, youtube, backup, library, settings
   components/  # ItemCard, EpisodeList, ContinueWatching, WhereToWatch, NextEpisodeCountdown…
-  pages/       # Library, Search, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
+  pages/       # Library, Search, Preview, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
   types.ts     # modelo de datos
 ```
 

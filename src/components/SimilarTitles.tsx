@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { getSimilar, posterUrl, type TmdbSimilar } from '../lib/tmdb'
+import { getSimilar, getSeries, getMovie, posterUrl, type TmdbSimilar } from '../lib/tmdb'
 import { addMovieFromTmdb, addSeriesFromTmdb } from '../lib/library'
 import { toast } from '../lib/toast'
 
 /**
  * "También te puede gustar": títulos parecidos por género/temática (consulta
- * en vivo a TMDB, no se guarda). Se excluyen los que ya tienes en tu
- * biblioteca y se pueden añadir directamente desde aquí.
+ * en vivo a TMDB, no se guarda). Se filtra por el idioma original del título
+ * base ('similar' de TMDB mezcla géneros sin distinguir origen: sin este
+ * filtro, un anime japonés puede acabar recomendando series occidentales con
+ * temática parecida). Se excluyen los que ya tienes en tu biblioteca y se
+ * pueden añadir directamente desde aquí.
  */
 export default function SimilarTitles({ tmdbId, kind }: { tmdbId: number; kind: 'movie' | 'tv' }) {
   const [results, setResults] = useState<TmdbSimilar[] | null>(null)
@@ -17,8 +21,14 @@ export default function SimilarTitles({ tmdbId, kind }: { tmdbId: number; kind: 
   useEffect(() => {
     let alive = true
     setResults(null)
-    getSimilar(tmdbId, kind)
-      .then((r) => alive && setResults(r))
+    Promise.all([getSimilar(tmdbId, kind), kind === 'tv' ? getSeries(tmdbId) : getMovie(tmdbId)])
+      .then(([similar, base]) => {
+        if (!alive) return
+        const filtered = base.originalLanguage
+          ? similar.filter((r) => r.originalLanguage === base.originalLanguage)
+          : similar
+        setResults(filtered)
+      })
       .catch(() => alive && setResults([]))
     return () => {
       alive = false
@@ -59,7 +69,7 @@ export default function SimilarTitles({ tmdbId, kind }: { tmdbId: number; kind: 
       <div className="similar-row">
         {filtered.map((r) => (
           <div className="similar-card" key={r.id}>
-            <div className="similar-poster">
+            <Link to={`/preview/${kind}/${r.id}`} className="similar-poster">
               {r.posterPath ? (
                 <img src={posterUrl(r.posterPath, 'w185')} alt={r.title} loading="lazy" />
               ) : (
@@ -67,14 +77,20 @@ export default function SimilarTitles({ tmdbId, kind }: { tmdbId: number; kind: 
               )}
               <button
                 className="similar-add"
-                onClick={() => add(r)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  add(r)
+                }}
                 disabled={addingId === r.id}
                 title="Añadir a mi biblioteca"
               >
                 {addingId === r.id ? '…' : '+'}
               </button>
-            </div>
-            <div className="similar-title">{r.title}</div>
+            </Link>
+            <Link to={`/preview/${kind}/${r.id}`} className="similar-title">
+              {r.title}
+            </Link>
           </div>
         ))}
       </div>

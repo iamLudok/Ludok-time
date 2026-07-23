@@ -86,6 +86,8 @@ export interface TmdbMovie {
   overview?: string
   year?: number
   runtime?: number
+  /** Código ISO 639-1 del idioma original ('ja', 'ko', 'en'…). */
+  originalLanguage?: string
 }
 
 export async function getMovie(id: number): Promise<TmdbMovie> {
@@ -96,6 +98,7 @@ export async function getMovie(id: number): Promise<TmdbMovie> {
     overview?: string
     release_date?: string
     runtime?: number
+    original_language?: string
   }>(`/movie/${id}`)
   return {
     id: raw.id,
@@ -104,6 +107,7 @@ export async function getMovie(id: number): Promise<TmdbMovie> {
     overview: raw.overview,
     year: yearFrom(raw.release_date),
     runtime: raw.runtime,
+    originalLanguage: raw.original_language,
   }
 }
 
@@ -138,6 +142,8 @@ export interface TmdbSeries {
    * traduce.
    */
   inProduction?: boolean
+  /** Código ISO 639-1 del idioma original ('ja', 'ko', 'en'…). */
+  originalLanguage?: string
 }
 
 export async function getSeries(id: number): Promise<TmdbSeries> {
@@ -149,6 +155,7 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
     first_air_date?: string
     episode_run_time?: number[]
     in_production?: boolean
+    original_language?: string
     seasons?: Array<{ season_number: number; episode_count: number; name: string }>
     next_episode_to_air?: {
       season_number: number
@@ -165,6 +172,7 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
     year: yearFrom(raw.first_air_date),
     episodeRuntime: raw.episode_run_time?.[0],
     inProduction: raw.in_production,
+    originalLanguage: raw.original_language,
     seasons: (raw.seasons ?? [])
       .filter((s) => s.season_number > 0) // ignoramos "Especiales" (temporada 0)
       .map((s) => ({
@@ -269,6 +277,7 @@ export interface TmdbSimilar {
   title: string
   posterPath?: string
   year?: number
+  originalLanguage?: string
 }
 
 /** Títulos parecidos por género/temática (no por comportamiento de usuarios). */
@@ -281,6 +290,7 @@ export async function getSimilar(id: number, kind: 'movie' | 'tv'): Promise<Tmdb
       poster_path?: string | null
       release_date?: string
       first_air_date?: string
+      original_language?: string
     }>
   }>(`/${kind}/${id}/similar`)
   return (data.results ?? []).map((r) => ({
@@ -288,5 +298,6 @@ export async function getSimilar(id: number, kind: 'movie' | 'tv'): Promise<Tmdb
     title: r.title || r.name || '(sin título)',
     posterPath: r.poster_path ?? undefined,
     year: yearFrom(r.release_date || r.first_air_date),
+    originalLanguage: r.original_language,
   }))
 }

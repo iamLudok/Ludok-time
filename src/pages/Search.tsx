@@ -111,25 +111,32 @@ function ScreenSearch() {
       <div className="stack">
         {results.map((r) => (
           <div className="search-result" key={`${r.mediaType}-${r.id}`}>
-            {r.posterPath ? (
-              <img src={posterUrl(r.posterPath, 'w185')} alt={r.title} loading="lazy" />
-            ) : (
-              <div className="thumb">{r.mediaType === 'tv' ? '📺' : '🎬'}</div>
-            )}
+            <Link to={`/preview/${r.mediaType}/${r.id}`}>
+              {r.posterPath ? (
+                <img src={posterUrl(r.posterPath, 'w185')} alt={r.title} loading="lazy" />
+              ) : (
+                <div className="thumb">{r.mediaType === 'tv' ? '📺' : '🎬'}</div>
+              )}
+            </Link>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600 }}>
+              <Link to={`/preview/${r.mediaType}/${r.id}`} style={{ fontWeight: 600 }}>
                 {r.title} {r.year ? <span className="muted">({r.year})</span> : null}
-              </div>
+              </Link>
               <p className="muted" style={{ fontSize: '0.82rem', margin: '4px 0 8px' }}>
                 {r.overview ? r.overview.slice(0, 120) + (r.overview.length > 120 ? '…' : '') : ''}
               </p>
-              <button
-                className="btn btn-sm btn-primary"
-                disabled={addingId === r.id}
-                onClick={() => add(r, r.mediaType === 'movie' ? 'movie' : 'series')}
-              >
-                {addingId === r.id ? '…' : r.mediaType === 'movie' ? '🎬 Añadir película' : '📺 Añadir serie'}
-              </button>
+              <div className="chip-row">
+                <Link to={`/preview/${r.mediaType}/${r.id}`} className="btn btn-sm">
+                  👁 Ver detalles
+                </Link>
+                <button
+                  className="btn btn-sm btn-primary"
+                  disabled={addingId === r.id}
+                  onClick={() => add(r, r.mediaType === 'movie' ? 'movie' : 'series')}
+                >
+                  {addingId === r.id ? '…' : r.mediaType === 'movie' ? '🎬 Añadir' : '📺 Añadir'}
+                </button>
+              </div>
             </div>
           </div>
         ))}
