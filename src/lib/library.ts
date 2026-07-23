@@ -135,8 +135,14 @@ export async function setEpisodeWatched(episodeId: string, watched: boolean): Pr
   await recomputeSeriesStatus(ep.itemId)
 }
 
-/** Cambia la fecha en que marcaste visto un episodio ya marcado (para reflejar cuándo lo viste de verdad, no cuándo lo registraste). */
-export async function setEpisodeWatchedAt(episodeId: string, watchedAt: number): Promise<void> {
+/**
+ * Cambia (o quita, con undefined) la fecha en que marcaste visto un episodio
+ * ya marcado. El episodio sigue contando como visto igualmente.
+ */
+export async function setEpisodeWatchedAt(
+  episodeId: string,
+  watchedAt: number | undefined,
+): Promise<void> {
   await db.episodes.update(episodeId, { watchedAt })
 }
 

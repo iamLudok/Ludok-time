@@ -55,7 +55,7 @@ export default function MovieDetail() {
           >
             {watched ? '✓ Vista (desmarcar)' : '▶ Marcar como vista'}
           </button>
-          {watched && item.completedAt && (
+          {watched && (
             <div style={{ marginTop: 6 }}>
               <WatchedDate
                 timestamp={item.completedAt}

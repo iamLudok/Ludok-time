@@ -47,9 +47,17 @@ No hay un diario global: cada episodio, película o libro muestra su propia fech
 ## Dónde verla y próximo episodio
 
 En la ficha de cada serie/película se consulta TMDB en vivo (datos de JustWatch) para mostrar en
-qué plataformas está disponible en España — con suscripción, alquiler o compra. En series en
-emisión, si TMDB ya anuncia el próximo episodio y aún no lo tienes localmente, aparece una cuenta
-atrás ("en 12 días", "mañana"…) con un botón para traerlo en cuanto esté disponible.
+qué plataformas está disponible en España — con suscripción, alquiler o compra.
+
+En la ficha de una serie que sigue en emisión (justo debajo de la cabecera) siempre verás algún
+aviso sobre el próximo episodio:
+
+- **Cuenta atrás** ("en 12 días", "mañana"…) si TMDB ya anuncia fecha y aún no lo tienes
+  localmente, con un botón **🔄 Actualizar** para traerlo en cuanto esté disponible.
+- **"Sin fecha anunciada todavía"** si la serie sigue activa pero TMDB no tiene el dato aún —
+  para que quede claro que la app sí lo ha comprobado, no que algo esté roto.
+- **Nada** si la serie ya terminó/canceló, o si el próximo episodio ya está en tu lista (en ese
+  caso lo gestiona el botón "▶ Ver siguiente").
 
 ### Importar tu historial de YouTube
 

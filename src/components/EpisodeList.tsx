@@ -56,7 +56,7 @@ export default function EpisodeList({ itemId, episodes }: { itemId: string; epis
                     {e.episode}. {e.title || 'Episodio ' + e.episode}
                   </div>
                   {e.airDate && <div className="poster-sub">Emitido: {e.airDate}</div>}
-                  {e.watched && e.watchedAt && (
+                  {e.watched && (
                     <WatchedDate
                       timestamp={e.watchedAt}
                       onChange={(ts) => setEpisodeWatchedAt(e.id, ts)}

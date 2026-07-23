@@ -77,7 +77,7 @@ export default function BookDetail() {
               {statusLabel(item.status, 'book')}
             </span>
           </div>
-          {item.status === 'completed' && item.completedAt && (
+          {item.status === 'completed' && (
             <div style={{ marginTop: 6 }}>
               <WatchedDate
                 timestamp={item.completedAt}

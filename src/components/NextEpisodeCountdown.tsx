@@ -4,6 +4,9 @@ import { syncSeriesEpisodes } from '../lib/library'
 import { toast } from '../lib/toast'
 import type { Episode } from '../types'
 
+/** TMDB ya no va a anunciar más episodios para estos estados. */
+const FINISHED_STATUSES = ['Ended', 'Canceled']
+
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + 'T00:00').getTime()
   const today = new Date()
@@ -13,9 +16,10 @@ function daysUntil(dateStr: string): number {
 
 /**
  * Cuenta atrás para el próximo episodio de una serie en emisión, consultado
- * en vivo a TMDB (no se guarda: caducaría). Solo se muestra si ese episodio
- * TODAVÍA no está en nuestra lista local (si ya está, el flujo normal de
- * "Ver siguiente" ya lo cubre).
+ * en vivo a TMDB (no se guarda: caducaría). Muestra SIEMPRE algún estado
+ * (incluido "sin fecha anunciada todavía") para que quede claro que la app
+ * sí lo ha comprobado, salvo en series ya terminadas/canceladas o mientras
+ * carga, donde no tiene sentido mostrar nada.
  */
 export default function NextEpisodeCountdown({
   itemId,
@@ -26,38 +30,59 @@ export default function NextEpisodeCountdown({
   tmdbId: number
   localEpisodes: Episode[]
 }) {
-  const [next, setNext] = useState<TmdbNextEpisode | null>(null)
+  const [series, setSeries] = useState<
+    { status?: string; nextEpisode?: TmdbNextEpisode } | null | undefined
+  >(undefined)
   const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     let alive = true
+    setSeries(undefined)
     getSeries(tmdbId)
-      .then((s) => alive && setNext(s.nextEpisode ?? null))
-      .catch(() => alive && setNext(null))
+      .then((s) => alive && setSeries({ status: s.status, nextEpisode: s.nextEpisode }))
+      .catch(() => alive && setSeries(null)) // fallo de red: no molestar, aviso secundario
     return () => {
       alive = false
     }
   }, [tmdbId])
 
-  if (!next || !next.airDate) return null
+  if (series === undefined || series === null) return null
+  if (series.status && FINISHED_STATUSES.includes(series.status)) return null
 
-  const haveLocally = localEpisodes.some(
-    (e) => e.season === next.season && e.episode === next.episode,
-  )
-  if (haveLocally) return null
-
-  const days = daysUntil(next.airDate)
-  const label = `S${next.season}E${next.episode}${next.title ? ' · ' + next.title : ''}`
+  const next = series.nextEpisode
+  const haveLocally =
+    !!next && localEpisodes.some((e) => e.season === next.season && e.episode === next.episode)
 
   const sync = async () => {
     setSyncing(true)
     try {
       const n = await syncSeriesEpisodes(itemId)
-      toast(n > 0 ? `${n} episodio${n === 1 ? '' : 's'} nuevo${n === 1 ? '' : 's'} añadido${n === 1 ? '' : 's'}` : 'Aún no aparece en TMDB')
+      toast(
+        n > 0
+          ? `${n} episodio${n === 1 ? '' : 's'} nuevo${n === 1 ? '' : 's'} añadido${n === 1 ? '' : 's'}`
+          : 'Aún no aparece en TMDB',
+      )
     } finally {
       setSyncing(false)
     }
   }
+
+  // Ya lo tenemos guardado localmente: lo gestiona "▶ Ver siguiente", no hay
+  // nada más que decir aquí.
+  if (haveLocally) return null
+
+  // Sin fecha anunciada todavía: lo decimos explícitamente para que quede
+  // claro que la app SÍ lo ha comprobado (y no que algo esté roto).
+  if (!next || !next.airDate) {
+    return (
+      <div className="banner" style={{ marginLeft: 0, marginRight: 0 }}>
+        <span className="muted">📅 Sin fecha anunciada todavía para el próximo episodio.</span>
+      </div>
+    )
+  }
+
+  const days = daysUntil(next.airDate)
+  const label = `S${next.season}E${next.episode}${next.title ? ' · ' + next.title : ''}`
 
   return (
     <div className="banner" style={{ marginLeft: 0, marginRight: 0 }}>
