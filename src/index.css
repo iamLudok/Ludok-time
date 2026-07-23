@@ -470,6 +470,26 @@ textarea:focus {
   font-weight: 700;
 }
 
+.season-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.chevron {
+  display: inline-block;
+  width: 14px;
+  color: var(--text-dim);
+}
+
 .stars {
   display: flex;
   gap: 4px;
@@ -486,6 +506,28 @@ textarea:focus {
 
 .stars button.on {
   color: var(--warn);
+}
+
+/* Modal ---------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  width: 100%;
+  max-width: 360px;
 }
 
 .toast {
@@ -543,24 +585,6 @@ textarea:focus {
 .stat .l {
   font-size: 0.8rem;
   color: var(--text-dim);
-}
-
-.timeline-item {
-  display: flex;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.timeline-ico {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--bg-elev-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 /* Similar titles ("También te puede gustar") -------------------------- */

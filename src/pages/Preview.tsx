@@ -81,9 +81,18 @@ export default function Preview() {
   const add = async () => {
     setAdding(true)
     try {
-      const localId = isSeries ? await addSeriesFromTmdb(id, 'plan') : await addMovieFromTmdb(id, 'movie', 'plan')
-      toast(`Añadido: ${data.title}`)
-      navigate(isSeries ? `/series/${localId}` : `/movie/${localId}`)
+      if (isSeries) {
+        const { id: localId, failedSeasons } = await addSeriesFromTmdb(id, 'plan')
+        toast(`Añadido: ${data.title}`)
+        if (failedSeasons > 0) {
+          toast(`⚠️ ${failedSeasons} temporada${failedSeasons === 1 ? '' : 's'} no se pudo cargar, prueba a "Actualizar" en la ficha`)
+        }
+        navigate(`/series/${localId}`)
+      } else {
+        const localId = await addMovieFromTmdb(id, 'movie', 'plan')
+        toast(`Añadido: ${data.title}`)
+        navigate(`/movie/${localId}`)
+      }
     } catch {
       toast('No se pudo añadir')
     } finally {
@@ -157,7 +166,11 @@ export default function Preview() {
 
       <WhereToWatch tmdbId={id} kind={isSeries ? 'tv' : 'movie'} />
 
-      <SimilarTitles tmdbId={id} kind={isSeries ? 'tv' : 'movie'} />
+      <SimilarTitles
+        tmdbId={id}
+        kind={isSeries ? 'tv' : 'movie'}
+        originalLanguage={data.originalLanguage}
+      />
     </div>
   )
 }

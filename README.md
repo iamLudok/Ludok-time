@@ -25,7 +25,7 @@ npm run preview  # sirve el build (para probar la PWA instalable)
 |---|---|---|
 | 📺 Series | TMDB | Episodio a episodio, con "ver siguiente" |
 | 🎬 Películas | TMDB | Vista / pendiente |
-| 📖 Libros | Open Library (sin API key) | **Por página**, con % leído |
+| 📖 Libros | Open Library (sin API key) | **Por página**, con % leído. Fecha de "leído" editable |
 | ▶️ Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
 
 **Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca ni en los
@@ -34,12 +34,13 @@ sepultarían el resto.
 
 ## Vista previa antes de añadir
 
-Al buscar, cada resultado indica si es **📺 Serie** o **🎬 Película** y solo tiene un botón,
-"👁 Ver detalles" (nada de "Añadir" directo — siempre puedes añadirlo después de ver la ficha).
-Igual desde "También te puede gustar", tocando la carátula. La vista previa muestra datos de TMDB
-en vivo: sinopsis, temporadas con su número de episodios, y dónde verla. Nada se guarda hasta que
-pulsas "Añadir" dentro de la ficha previa; si el título ya está en tu biblioteca, en vez de
-añadir verás un botón para ir directo a su ficha real.
+Al buscar, cada resultado indica si es **📺 Serie**, **🎬 Película** o **📖 Libro** y solo tiene un
+botón, "👁 Ver detalles" (nada de "Añadir" directo — siempre puedes añadirlo después de ver la
+ficha). Igual desde "También te puede gustar", tocando la carátula. La vista previa muestra datos
+en vivo: sinopsis, temporadas con su número de episodios, dónde verla (series/pelis vía TMDB) o
+autor/páginas (libros vía Open Library). Nada se guarda hasta que pulsas "Añadir" dentro de la
+ficha previa; si el título ya está en tu biblioteca, en vez de añadir verás un botón para ir
+directo a su ficha real.
 
 ## Continuar viendo
 
@@ -48,10 +49,18 @@ próximo episodio, con un botón para marcarlo visto ahí mismo — sin entrar e
 
 ## Fechas de "visto" (editables)
 
-No hay un diario global: cada episodio, película o libro muestra su propia fecha de "visto"
-(junto al episodio, en su ficha). Al marcar algo se guarda "hoy", pero puedes tocar la fecha
-(✏️) y ponerla a mano si sabes que lo viste hace tiempo — útil al recuperar historial antiguo
-(p. ej. de TV Time) sin que quede como si lo hubieras visto todo en el mismo minuto.
+No hay un diario global: cada episodio, película, libro o serie completa muestra su propia fecha
+de "visto" (junto al episodio, en su ficha). Al marcar algo se guarda "hoy", pero puedes tocar la
+fecha (✏️) y ponerla a mano, o quitarla del todo si no la recuerdas — útil al recuperar historial
+antiguo (p. ej. de TV Time) sin que quede como si lo hubieras visto todo en el mismo minuto. Esa
+fecha nunca se pisa sola: si desmarcas un episodio por error y lo vuelves a marcar, la fecha de
+"serie completada" no cambia.
+
+## Temporadas plegables
+
+En la ficha de una serie, cada temporada se puede plegar/desplegar tocando su cabecera (▾/▸) —
+útil en series largas para no tener que escrollear sin parar. Por defecto solo está abierta la
+temporada donde vas (la del próximo episodio pendiente); el resto empiezan plegadas.
 
 ## Dónde verla y próximo episodio
 
@@ -103,9 +112,11 @@ Los datos viven en el almacenamiento del navegador. Para que estén a salvo:
 2. Haz **copias de seguridad** a menudo: **Ajustes → Exportar copia**. Guarda el fichero
    `ludok-time-backup-*.json` en tu nube o carpeta de Archivos. En el móvil se abre el menú de
    compartir para mandarlo donde quieras.
-3. Para restaurar (móvil nuevo, borrado accidental…): **Ajustes → Importar copia**.
-   - *Reemplazar*: deja exactamente lo que hay en la copia.
-   - *Fusionar*: añade lo de la copia sin borrar lo que ya tengas.
+3. Para restaurar (móvil nuevo, borrado accidental…): **Ajustes → Importar copia**. Al elegir el
+   fichero se abre un cuadro con tres opciones claras:
+   - *🔄 Reemplazar todo lo actual*: deja exactamente lo que hay en la copia.
+   - *➕ Fusionar*: añade lo de la copia sin borrar lo que ya tengas.
+   - *Cancelar*: no hace nada.
 
 ## Despliegue (GitHub Pages)
 
@@ -157,7 +168,7 @@ En escritorio (Chrome/Edge) aparece un icono de instalar en la barra de direccio
 src/
   lib/         # lógica: db (Dexie), tmdb, openlibrary, youtube, backup, library, settings
   components/  # ItemCard, EpisodeList, ContinueWatching, WhereToWatch, NextEpisodeCountdown…
-  pages/       # Library, Search, Preview, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
+  pages/       # Library, Search, Preview, PreviewBook, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
   types.ts     # modelo de datos
 ```
 

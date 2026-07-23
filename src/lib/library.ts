@@ -2,6 +2,36 @@ import { db, newId } from './db'
 import { getMovie, getSeries, getSeasonEpisodes, posterUrl } from './tmdb'
 import type { Item, Episode, MediaType, Status } from '../types'
 
+/**
+ * Igual que Promise.all, pero como máximo `limit` peticiones a la vez y sin
+ * abortar si alguna falla (se reporta aparte). Series con muchísimas
+ * temporadas (Los Simpson, doramas larguísimos) podían disparar decenas de
+ * peticiones simultáneas a TMDB y chocar con su límite de tasa, perdiendo
+ * episodios de alguna temporada sin avisar a nadie.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<{ results: R[]; failed: number }> {
+  const results: R[] = []
+  let failed = 0
+  let index = 0
+  const worker = async () => {
+    while (index < items.length) {
+      const i = index++
+      try {
+        results[i] = await fn(items[i])
+      } catch {
+        failed++
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  // Los índices fallidos quedan huecos: los descartamos sin perder el orden de los que sí llegaron.
+  return { results: results.filter((r) => r !== undefined), failed }
+}
+
 /** Añade una película desde TMDB a la biblioteca. Devuelve el id local. */
 export async function addMovieFromTmdb(
   tmdbId: number,
@@ -37,14 +67,23 @@ export async function addMovieFromTmdb(
   return item.id
 }
 
-/** Añade una serie desde TMDB, trayendo todos sus episodios (sin marcar). Devuelve el id local. */
-export async function addSeriesFromTmdb(tmdbId: number, status: Status = 'plan'): Promise<string> {
+export interface AddSeriesResult {
+  id: string
+  /** Temporadas que no se pudieron cargar (fallo de red o límite de TMDB). */
+  failedSeasons: number
+}
+
+/** Añade una serie desde TMDB, trayendo todos sus episodios (sin marcar). */
+export async function addSeriesFromTmdb(
+  tmdbId: number,
+  status: Status = 'plan',
+): Promise<AddSeriesResult> {
   const existing = await db.items
     .where('type')
     .equals('series')
     .and((i) => i.source === 'tmdb' && i.sourceId === String(tmdbId))
     .first()
-  if (existing) return existing.id
+  if (existing) return { id: existing.id, failedSeasons: 0 }
 
   const s = await getSeries(tmdbId)
   const itemId = newId()
@@ -65,9 +104,13 @@ export async function addSeriesFromTmdb(tmdbId: number, status: Status = 'plan')
   }
   await db.items.add(item)
 
-  // Traemos episodios de cada temporada en paralelo.
-  const seasons = await Promise.all(
-    s.seasons.map((season) => getSeasonEpisodes(tmdbId, season.seasonNumber)),
+  // Como máximo 4 temporadas a la vez: series muy longevas (cientos de
+  // episodios) podían disparar decenas de peticiones simultáneas y chocar
+  // con el límite de tasa de TMDB, perdiendo episodios sin avisar.
+  const { results: seasons, failed: failedSeasons } = await mapWithConcurrency(
+    s.seasons,
+    4,
+    (season) => getSeasonEpisodes(tmdbId, season.seasonNumber),
   )
   const episodes: Episode[] = seasons.flat().map((e) => ({
     id: newId(),
@@ -80,17 +123,23 @@ export async function addSeriesFromTmdb(tmdbId: number, status: Status = 'plan')
     watched: false,
   }))
   if (episodes.length) await db.episodes.bulkAdd(episodes)
-  return itemId
+  return { id: itemId, failedSeasons }
+}
+
+export interface SyncSeriesResult {
+  added: number
+  failedSeasons: number
 }
 
 /**
  * Vuelve a consultar TMDB y añade los episodios nuevos que falten (series en
  * emisión). No toca los episodios ya guardados: nunca pisa su estado "visto".
- * Devuelve cuántos episodios nuevos se añadieron.
  */
-export async function syncSeriesEpisodes(itemId: string): Promise<number> {
+export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResult> {
   const item = await db.items.get(itemId)
-  if (!item || item.type !== 'series' || item.source !== 'tmdb' || !item.sourceId) return 0
+  if (!item || item.type !== 'series' || item.source !== 'tmdb' || !item.sourceId) {
+    return { added: 0, failedSeasons: 0 }
+  }
   const tmdbId = Number(item.sourceId)
 
   const [s, existing] = await Promise.all([
@@ -99,8 +148,10 @@ export async function syncSeriesEpisodes(itemId: string): Promise<number> {
   ])
   const have = new Set(existing.map((e) => `${e.season}-${e.episode}`))
 
-  const seasons = await Promise.all(
-    s.seasons.map((season) => getSeasonEpisodes(tmdbId, season.seasonNumber)),
+  const { results: seasons, failed: failedSeasons } = await mapWithConcurrency(
+    s.seasons,
+    4,
+    (season) => getSeasonEpisodes(tmdbId, season.seasonNumber),
   )
   const nuevos: Episode[] = seasons
     .flat()
@@ -116,7 +167,7 @@ export async function syncSeriesEpisodes(itemId: string): Promise<number> {
       watched: false,
     }))
   if (nuevos.length) await db.episodes.bulkAdd(nuevos)
-  return nuevos.length
+  return { added: nuevos.length, failedSeasons }
 }
 
 export function epLabel(ep: Episode): string {
@@ -183,12 +234,6 @@ export async function orderedEpisodes(itemId: string): Promise<Episode[]> {
   return eps.sort((a, b) => a.season - b.season || a.episode - b.episode)
 }
 
-/** Siguiente episodio no visto (en orden). undefined si no queda ninguno. */
-export async function nextUnwatched(itemId: string): Promise<Episode | undefined> {
-  const eps = await orderedEpisodes(itemId)
-  return eps.find((e) => !e.watched)
-}
-
 /** Recalcula el estado de una serie a partir de sus episodios vistos. */
 async function recomputeSeriesStatus(itemId: string): Promise<void> {
   const item = await db.items.get(itemId)
@@ -205,7 +250,10 @@ async function recomputeSeriesStatus(itemId: string): Promise<void> {
     if (!item.startedAt) patch.startedAt = Date.now()
   } else if (watched === eps.length) {
     patch.status = 'completed'
-    patch.completedAt = Date.now()
+    // No pisar una fecha de "completada" ya existente: si desmarcas un
+    // episodio por error y lo vuelves a marcar, no debe parecer que la
+    // terminaste hoy si en realidad la terminaste hace tiempo.
+    if (!item.completedAt) patch.completedAt = Date.now()
     if (!item.startedAt) patch.startedAt = Date.now()
   }
   if (Object.keys(patch).length) {
@@ -420,17 +468,4 @@ export async function importVideos(entries: VideoInput[]): Promise<ImportVideosR
 
   if (nuevos.length) await db.items.bulkAdd(nuevos)
   return { added: nuevos.length, skipped }
-}
-
-export interface Progress {
-  total: number
-  watched: number
-  percent: number
-}
-
-export async function seriesProgress(itemId: string): Promise<Progress> {
-  const eps = await db.episodes.where('itemId').equals(itemId).toArray()
-  const total = eps.length
-  const watched = eps.filter((e) => e.watched).length
-  return { total, watched, percent: total ? Math.round((watched / total) * 100) : 0 }
 }

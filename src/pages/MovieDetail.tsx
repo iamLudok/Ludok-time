@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import { setStatus, statusLabel, updateItem } from '../lib/library'
+import { getMovie } from '../lib/tmdb'
 import DetailControls from '../components/DetailControls'
 import WatchedDate from '../components/WatchedDate'
 import WhereToWatch from '../components/WhereToWatch'
@@ -11,6 +13,20 @@ import { toast } from '../lib/toast'
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
   const item = useLiveQuery(() => (id ? db.items.get(id) : undefined), [id])
+
+  const tmdbId = item?.source === 'tmdb' && item.sourceId ? Number(item.sourceId) : undefined
+  const [originalLanguage, setOriginalLanguage] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!tmdbId) return
+    let alive = true
+    getMovie(tmdbId)
+      .then((m) => alive && setOriginalLanguage(m.originalLanguage))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [tmdbId])
 
   if (item === undefined) return <div className="empty">Cargando…</div>
   if (!item) {
@@ -73,12 +89,10 @@ export default function MovieDetail() {
         </p>
       )}
 
-      {item.source === 'tmdb' && item.sourceId && (
-        <WhereToWatch tmdbId={Number(item.sourceId)} kind="movie" />
-      )}
+      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="movie" />}
 
-      {item.source === 'tmdb' && item.sourceId && (
-        <SimilarTitles tmdbId={Number(item.sourceId)} kind="movie" />
+      {tmdbId && (
+        <SimilarTitles tmdbId={tmdbId} kind="movie" originalLanguage={originalLanguage} />
       )}
 
       <DetailControls item={item} />

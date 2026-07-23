@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { getSeries, type TmdbNextEpisode } from '../lib/tmdb'
+import { useState } from 'react'
+import type { TmdbNextEpisode } from '../lib/tmdb'
 import { syncSeriesEpisodes } from '../lib/library'
 import { toast } from '../lib/toast'
 import type { Episode } from '../types'
@@ -12,36 +12,23 @@ function daysUntil(dateStr: string): number {
 }
 
 /**
- * Cuenta atrás para el próximo episodio de una serie en emisión, consultado
- * en vivo a TMDB (no se guarda: caducaría). Muestra SIEMPRE algún estado
- * (incluido "sin fecha anunciada todavía") para que quede claro que la app
- * sí lo ha comprobado, salvo en series ya terminadas/canceladas o mientras
- * carga, donde no tiene sentido mostrar nada.
+ * Cuenta atrás para el próximo episodio de una serie en emisión. `series` lo
+ * calcula el padre (un solo fetch a TMDB compartido con "También te puede
+ * gustar", en vez de que cada componente pida lo mismo por su cuenta).
+ * Muestra SIEMPRE algún estado (incluido "sin fecha anunciada todavía") para
+ * que quede claro que la app sí lo ha comprobado, salvo en series ya
+ * terminadas/canceladas o mientras carga, donde no tiene sentido mostrar nada.
  */
 export default function NextEpisodeCountdown({
   itemId,
-  tmdbId,
   localEpisodes,
+  series,
 }: {
   itemId: string
-  tmdbId: number
   localEpisodes: Episode[]
+  series: { inProduction?: boolean; nextEpisode?: TmdbNextEpisode } | null | undefined
 }) {
-  const [series, setSeries] = useState<
-    { inProduction?: boolean; nextEpisode?: TmdbNextEpisode } | null | undefined
-  >(undefined)
   const [syncing, setSyncing] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    setSeries(undefined)
-    getSeries(tmdbId)
-      .then((s) => alive && setSeries({ inProduction: s.inProduction, nextEpisode: s.nextEpisode }))
-      .catch(() => alive && setSeries(null)) // fallo de red: no molestar, aviso secundario
-    return () => {
-      alive = false
-    }
-  }, [tmdbId])
 
   if (series === undefined || series === null) return null
   // Serie ya terminada/cancelada: no tiene sentido preguntar por el próximo episodio.
@@ -54,12 +41,15 @@ export default function NextEpisodeCountdown({
   const sync = async () => {
     setSyncing(true)
     try {
-      const n = await syncSeriesEpisodes(itemId)
-      toast(
-        n > 0
-          ? `${n} episodio${n === 1 ? '' : 's'} nuevo${n === 1 ? '' : 's'} añadido${n === 1 ? '' : 's'}`
-          : 'Aún no aparece en TMDB',
-      )
+      const { added, failedSeasons } = await syncSeriesEpisodes(itemId)
+      if (added > 0) {
+        toast(`${added} episodio${added === 1 ? '' : 's'} nuevo${added === 1 ? '' : 's'} añadido${added === 1 ? '' : 's'}`)
+      } else {
+        toast('Aún no aparece en TMDB')
+      }
+      if (failedSeasons > 0) {
+        toast(`⚠️ ${failedSeasons} temporada${failedSeasons === 1 ? '' : 's'} no se pudo comprobar, inténtalo de nuevo`)
+      }
     } finally {
       setSyncing(false)
     }

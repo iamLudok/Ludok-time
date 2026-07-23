@@ -5,6 +5,7 @@ import BackupBanner from './components/BackupBanner'
 import Library from './pages/Library'
 import Search from './pages/Search'
 import Preview from './pages/Preview'
+import PreviewBook from './pages/PreviewBook'
 import SeriesDetail from './pages/SeriesDetail'
 import MovieDetail from './pages/MovieDetail'
 import BookDetail from './pages/BookDetail'
@@ -48,6 +49,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Library />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/preview/book/:key" element={<PreviewBook />} />
           <Route path="/preview/:kind/:tmdbId" element={<Preview />} />
           <Route path="/series/:id" element={<SeriesDetail />} />
           <Route path="/movie/:id" element={<MovieDetail />} />

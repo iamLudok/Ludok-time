@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { searchMulti, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { searchBooks, type BookResult } from '../lib/openlibrary'
 import { videoIdFromUrl, thumbnailUrl, fetchVideoInfo } from '../lib/youtube'
-import { addBook, addVideo, addManualVideo } from '../lib/library'
+import { addVideo, addManualVideo } from '../lib/library'
 import { useSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
 
@@ -124,12 +124,10 @@ function ScreenSearch() {
 /* --- Libros (Open Library) ------------------------------------------------- */
 
 function BookSearch() {
-  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<BookResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [addingKey, setAddingKey] = useState<string | null>(null)
 
   const doSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,19 +141,6 @@ function BookSearch() {
       setResults([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const add = async (b: BookResult) => {
-    setAddingKey(b.key)
-    try {
-      const id = await addBook(b)
-      toast(`Añadido: ${b.title}`)
-      navigate(`/book/${id}`)
-    } catch {
-      toast('No se pudo añadir')
-    } finally {
-      setAddingKey(null)
     }
   }
 
@@ -181,26 +166,35 @@ function BookSearch() {
       <div className="stack">
         {results.map((b) => (
           <div className="search-result" key={b.key}>
-            {b.cover ? (
-              <img src={b.cover} alt={b.title} loading="lazy" />
-            ) : (
-              <div className="thumb">📖</div>
-            )}
+            <Link to={`/preview/book/${encodeURIComponent(b.key)}`} state={b}>
+              {b.cover ? (
+                <img src={b.cover} alt={b.title} loading="lazy" />
+              ) : (
+                <div className="thumb">📖</div>
+              )}
+            </Link>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600 }}>
+              <Link
+                to={`/preview/book/${encodeURIComponent(b.key)}`}
+                state={b}
+                style={{ fontWeight: 600 }}
+              >
                 {b.title} {b.year ? <span className="muted">({b.year})</span> : null}
+              </Link>
+              <div style={{ margin: '4px 0' }}>
+                <span className="badge">📖 Libro</span>
               </div>
               <p className="muted" style={{ fontSize: '0.82rem', margin: '4px 0 8px' }}>
                 {b.author ?? 'Autor desconocido'}
                 {b.pages ? ` · ${b.pages} págs.` : ''}
               </p>
-              <button
+              <Link
+                to={`/preview/book/${encodeURIComponent(b.key)}`}
+                state={b}
                 className="btn btn-sm btn-primary"
-                disabled={addingKey === b.key}
-                onClick={() => add(b)}
               >
-                {addingKey === b.key ? '…' : '📖 Añadir libro'}
-              </button>
+                👁 Ver detalles
+              </Link>
             </div>
           </div>
         ))}

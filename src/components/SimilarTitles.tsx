@@ -2,33 +2,36 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { getSimilar, getSeries, getMovie, posterUrl, type TmdbSimilar } from '../lib/tmdb'
+import { getSimilar, posterUrl, type TmdbSimilar } from '../lib/tmdb'
 import { addMovieFromTmdb, addSeriesFromTmdb } from '../lib/library'
 import { toast } from '../lib/toast'
 
 /**
  * "También te puede gustar": títulos parecidos por género/temática (consulta
- * en vivo a TMDB, no se guarda). Se filtra por el idioma original del título
- * base ('similar' de TMDB mezcla géneros sin distinguir origen: sin este
- * filtro, un anime japonés puede acabar recomendando series occidentales con
- * temática parecida). Se excluyen los que ya tienes en tu biblioteca y se
- * pueden añadir directamente desde aquí.
+ * en vivo a TMDB, no se guarda). `originalLanguage` lo calcula el padre (que
+ * ya tiene que pedir los datos del título base para otras cosas) y aquí solo
+ * se usa para filtrar: 'similar' de TMDB mezcla géneros sin distinguir
+ * origen, así que sin este filtro un anime japonés puede acabar
+ * recomendando series occidentales con temática parecida. Se excluyen los
+ * que ya tienes en tu biblioteca y se pueden añadir directamente desde aquí.
  */
-export default function SimilarTitles({ tmdbId, kind }: { tmdbId: number; kind: 'movie' | 'tv' }) {
+export default function SimilarTitles({
+  tmdbId,
+  kind,
+  originalLanguage,
+}: {
+  tmdbId: number
+  kind: 'movie' | 'tv'
+  originalLanguage?: string
+}) {
   const [results, setResults] = useState<TmdbSimilar[] | null>(null)
   const [addingId, setAddingId] = useState<number | null>(null)
 
   useEffect(() => {
     let alive = true
     setResults(null)
-    Promise.all([getSimilar(tmdbId, kind), kind === 'tv' ? getSeries(tmdbId) : getMovie(tmdbId)])
-      .then(([similar, base]) => {
-        if (!alive) return
-        const filtered = base.originalLanguage
-          ? similar.filter((r) => r.originalLanguage === base.originalLanguage)
-          : similar
-        setResults(filtered)
-      })
+    getSimilar(tmdbId, kind)
+      .then((r) => alive && setResults(r))
       .catch(() => alive && setResults([]))
     return () => {
       alive = false
@@ -47,14 +50,23 @@ export default function SimilarTitles({ tmdbId, kind }: { tmdbId: number; kind: 
 
   if (!results || results.length === 0) return null
 
-  const filtered = results.filter((r) => !existingIds.has(String(r.id))).slice(0, 12)
+  const byLanguage = originalLanguage
+    ? results.filter((r) => r.originalLanguage === originalLanguage)
+    : results
+  const filtered = byLanguage.filter((r) => !existingIds.has(String(r.id))).slice(0, 12)
   if (filtered.length === 0) return null
 
   const add = async (r: TmdbSimilar) => {
     setAddingId(r.id)
     try {
-      if (kind === 'movie') await addMovieFromTmdb(r.id, 'movie', 'plan')
-      else await addSeriesFromTmdb(r.id, 'plan')
+      if (kind === 'movie') {
+        await addMovieFromTmdb(r.id, 'movie', 'plan')
+      } else {
+        const { failedSeasons } = await addSeriesFromTmdb(r.id, 'plan')
+        if (failedSeasons > 0) {
+          toast(`⚠️ ${failedSeasons} temporada${failedSeasons === 1 ? '' : 's'} no se pudo cargar`)
+        }
+      }
       toast(`Añadido: ${r.title}`)
     } catch {
       toast('No se pudo añadir')

@@ -32,6 +32,13 @@ export class LudokDB extends Dexie {
       activity: null,
       settings: 'id',
     })
+    // v4: quita el índice compuesto [itemId+season], que nunca se llegó a
+    // usar (todas las consultas filtran/ordenan episodios en JS).
+    this.version(4).stores({
+      items: 'id, type, status, title, addedAt',
+      episodes: 'id, itemId, watchedAt',
+      settings: 'id',
+    })
   }
 }
 

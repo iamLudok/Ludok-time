@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { setEpisodeWatched } from '../lib/library'
+import { setEpisodeWatched, updateItem } from '../lib/library'
+import { getSeries, type TmdbSeries } from '../lib/tmdb'
 import EpisodeList from '../components/EpisodeList'
 import DetailControls from '../components/DetailControls'
+import WatchedDate from '../components/WatchedDate'
 import WhereToWatch from '../components/WhereToWatch'
 import NextEpisodeCountdown from '../components/NextEpisodeCountdown'
 import SimilarTitles from '../components/SimilarTitles'
@@ -18,6 +21,26 @@ export default function SeriesDetail() {
     [id],
     [] as Episode[],
   )
+
+  // Un solo fetch en vivo a TMDB, compartido por el countdown de próximo
+  // episodio y por "También te puede gustar" (antes cada uno pedía lo suyo).
+  const tmdbId = item?.source === 'tmdb' && item.sourceId ? Number(item.sourceId) : undefined
+  const [tmdbData, setTmdbData] = useState<TmdbSeries | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (!tmdbId) {
+      setTmdbData(null)
+      return
+    }
+    let alive = true
+    setTmdbData(undefined)
+    getSeries(tmdbId)
+      .then((s) => alive && setTmdbData(s))
+      .catch(() => alive && setTmdbData(null))
+    return () => {
+      alive = false
+    }
+  }, [tmdbId])
 
   if (item === undefined) return <div className="empty">Cargando…</div>
   if (item === null || !item) {
@@ -65,14 +88,29 @@ export default function SeriesDetail() {
               ▶ Ver siguiente: S{nextEp.season}E{nextEp.episode}
             </button>
           )}
+          {item.status === 'completed' && (
+            <div style={{ marginTop: 6 }}>
+              <WatchedDate
+                timestamp={item.completedAt}
+                label="Completada"
+                onChange={(ts) => updateItem(item.id, { completedAt: ts })}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {item.source === 'tmdb' && item.sourceId && (
+      {tmdbId && (
         <NextEpisodeCountdown
           itemId={item.id}
-          tmdbId={Number(item.sourceId)}
           localEpisodes={sorted}
+          series={
+            tmdbData === undefined
+              ? undefined
+              : tmdbData === null
+                ? null
+                : { inProduction: tmdbData.inProduction, nextEpisode: tmdbData.nextEpisode }
+          }
         />
       )}
 
@@ -82,12 +120,10 @@ export default function SeriesDetail() {
         </p>
       )}
 
-      {item.source === 'tmdb' && item.sourceId && (
-        <WhereToWatch tmdbId={Number(item.sourceId)} kind="tv" />
-      )}
+      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="tv" />}
 
-      {item.source === 'tmdb' && item.sourceId && (
-        <SimilarTitles tmdbId={Number(item.sourceId)} kind="tv" />
+      {tmdbId && (
+        <SimilarTitles tmdbId={tmdbId} kind="tv" originalLanguage={tmdbData?.originalLanguage} />
       )}
 
       <DetailControls item={item} />
@@ -96,7 +132,7 @@ export default function SeriesDetail() {
       {total === 0 ? (
         <p className="muted">No hay episodios cargados para esta serie.</p>
       ) : (
-        <EpisodeList itemId={item.id} episodes={sorted} />
+        <EpisodeList key={item.id} itemId={item.id} episodes={sorted} />
       )}
     </div>
   )

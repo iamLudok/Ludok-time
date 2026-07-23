@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = useState('')
   const [storage, setStorage] = useState<StorageInfo | null>(null)
   const [importing, setImporting] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => setApiKey(settings.tmdbApiKey), [settings.tmdbApiKey])
@@ -37,23 +38,28 @@ export default function SettingsPage() {
     }
   }
 
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
-    const mode = confirm(
-      'Importar copia:\n\n"Aceptar" = REEMPLAZAR todo lo actual por la copia.\n"Cancelar" = FUSIONAR (añadir sin borrar lo existente).',
-    )
-      ? 'replace'
-      : 'merge'
+    if (file) setPendingFile(file)
+  }
+
+  const cancelImport = () => {
+    setPendingFile(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const doImport = async (mode: 'replace' | 'merge') => {
+    if (!pendingFile) return
     setImporting(true)
     try {
-      const text = await file.text()
+      const text = await pendingFile.text()
       const res = await importBackup(text, mode)
       toast(`Importado: ${res.items} títulos, ${res.episodes} episodios`)
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al importar')
     } finally {
       setImporting(false)
+      setPendingFile(null)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -175,6 +181,36 @@ export default function SettingsPage() {
       <p className="muted" style={{ textAlign: 'center', fontSize: '0.8rem' }}>
         Ludok Time · tus datos, tuyos.
       </p>
+
+      {pendingFile && (
+        <div className="modal-backdrop" onClick={cancelImport}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Importar copia</h3>
+            <p className="muted" style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>
+              {pendingFile.name}
+            </p>
+            <div className="stack">
+              <button
+                className="btn btn-primary btn-block"
+                onClick={() => doImport('replace')}
+                disabled={importing}
+              >
+                {importing ? '…' : '🔄 Reemplazar todo lo actual'}
+              </button>
+              <button
+                className="btn btn-block"
+                onClick={() => doImport('merge')}
+                disabled={importing}
+              >
+                {importing ? '…' : '➕ Fusionar (añadir sin borrar)'}
+              </button>
+              <button className="btn btn-block" onClick={cancelImport} disabled={importing}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
