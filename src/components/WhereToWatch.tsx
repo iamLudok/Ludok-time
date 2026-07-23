@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getWatchProviders, type WatchProviders } from '../lib/tmdb'
+import { providerSearchUrl } from '../lib/streamingLinks'
 
 /**
  * Dónde ver una serie/película (Netflix, HBO, Prime…) para España. Consulta
@@ -7,7 +8,15 @@ import { getWatchProviders, type WatchProviders } from '../lib/tmdb'
  * guardan). Si falla o no hay datos, no muestra nada: es información
  * secundaria, no debe romper la ficha.
  */
-export default function WhereToWatch({ tmdbId, kind }: { tmdbId: number; kind: 'movie' | 'tv' }) {
+export default function WhereToWatch({
+  tmdbId,
+  kind,
+  title,
+}: {
+  tmdbId: number
+  kind: 'movie' | 'tv'
+  title: string
+}) {
   const [data, setData] = useState<WatchProviders | null>(null)
 
   useEffect(() => {
@@ -33,15 +42,24 @@ export default function WhereToWatch({ tmdbId, kind }: { tmdbId: number; kind: '
         {label}
       </div>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-        {list.map((p) => (
-          <img
-            key={p.name}
-            src={p.logoUrl}
-            alt={p.name}
-            title={p.name}
-            style={{ width: 36, height: 36, borderRadius: 8 }}
-          />
-        ))}
+        {list.map((p) => {
+          const searchUrl = providerSearchUrl(p.name, title)
+          const img = (
+            <img
+              src={p.logoUrl}
+              alt={p.name}
+              title={searchUrl ? `Buscar en ${p.name}` : p.name}
+              style={{ width: 36, height: 36, borderRadius: 8 }}
+            />
+          )
+          return searchUrl ? (
+            <a key={p.name} href={searchUrl} target="_blank" rel="noreferrer">
+              {img}
+            </a>
+          ) : (
+            <span key={p.name}>{img}</span>
+          )
+        })}
       </div>
     </div>
   )
@@ -52,7 +70,7 @@ export default function WhereToWatch({ tmdbId, kind }: { tmdbId: number; kind: '
       {flatrate.length > 0 && <Row label="Con suscripción" list={flatrate} />}
       {otherUnique.length > 0 && <Row label="Alquiler / compra" list={otherUnique} />}
       <p className="muted" style={{ fontSize: '0.72rem', marginTop: 6, marginBottom: 0 }}>
-        Disponibilidad en España ·{' '}
+        Disponibilidad en España · toca un logo para buscarlo ahí ·{' '}
         {data.link ? (
           <a href={data.link} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
             datos de JustWatch

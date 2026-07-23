@@ -89,7 +89,7 @@ export default function MovieDetail() {
         </p>
       )}
 
-      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="movie" />}
+      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="movie" title={item.title} />}
 
       {tmdbId && (
         <SimilarTitles tmdbId={tmdbId} kind="movie" originalLanguage={originalLanguage} />

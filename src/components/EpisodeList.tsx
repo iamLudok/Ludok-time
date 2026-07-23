@@ -71,6 +71,11 @@ export default function EpisodeList({ itemId, episodes }: { itemId: string; epis
             {isOpen &&
               seasonEps.map((e) => (
                 <div className="ep" key={e.id}>
+                  {e.still ? (
+                    <img className="ep-still" src={e.still} alt="" loading="lazy" />
+                  ) : (
+                    <div className="ep-still ep-still-fallback">🎬</div>
+                  )}
                   <button
                     className={'ep-check' + (e.watched ? ' done' : '')}
                     onClick={() => setEpisodeWatched(e.id, !e.watched)}

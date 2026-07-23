@@ -25,8 +25,8 @@ export default function PreviewBook() {
     () =>
       db.items
         .toArray()
-        .then((items) => items.find((i) => i.source === 'openlibrary' && i.sourceId === key)),
-    [key],
+        .then((items) => items.find((i) => i.source === book?.source && i.sourceId === key)),
+    [key, book?.source],
   )
 
   if (!book) {

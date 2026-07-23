@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { searchMulti, posterUrl, type TmdbSearchResult } from '../lib/tmdb'
 import { searchBooks, type BookResult } from '../lib/openlibrary'
+import { searchGoogleBooks } from '../lib/googlebooks'
 import { videoIdFromUrl, thumbnailUrl, fetchVideoInfo } from '../lib/youtube'
-import { addVideo, addManualVideo } from '../lib/library'
+import { addVideo, addManualVideo, addManualBook } from '../lib/library'
 import { useSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
 
@@ -123,11 +124,21 @@ function ScreenSearch() {
 
 /* --- Libros (Open Library) ------------------------------------------------- */
 
+const BOOK_SOURCE_LABEL: Record<BookResult['source'], string> = {
+  openlibrary: 'Open Library',
+  googlebooks: 'Google Books',
+}
+
 function BookSearch() {
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<BookResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [manualTitle, setManualTitle] = useState('')
+  const [manualAuthor, setManualAuthor] = useState('')
+  const [manualPages, setManualPages] = useState('')
+  const [addingManual, setAddingManual] = useState(false)
 
   const doSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -135,70 +146,133 @@ function BookSearch() {
     setLoading(true)
     setError('')
     try {
-      setResults(await searchBooks(query))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al buscar')
-      setResults([])
+      // Dos fuentes independientes: si una falla (p. ej. límite diario de
+      // Google Books sin API key), la otra sigue funcionando igual.
+      const [ol, gb] = await Promise.allSettled([searchBooks(query), searchGoogleBooks(query)])
+      const combined = [
+        ...(ol.status === 'fulfilled' ? ol.value : []),
+        ...(gb.status === 'fulfilled' ? gb.value : []),
+      ]
+      setResults(combined)
+      if (combined.length === 0 && ol.status === 'rejected' && gb.status === 'rejected') {
+        setError('No se pudo buscar en ninguna fuente. Prueba a apuntarlo a mano abajo.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  const addManual = async () => {
+    if (!manualTitle.trim()) return
+    setAddingManual(true)
+    try {
+      const id = await addManualBook({
+        title: manualTitle.trim(),
+        author: manualAuthor.trim() || undefined,
+        pages: manualPages ? parseInt(manualPages, 10) : undefined,
+      })
+      toast('Añadido')
+      navigate(`/book/${id}`)
+    } finally {
+      setAddingManual(false)
+    }
+  }
+
   return (
-    <div>
-      <form onSubmit={doSearch} className="row" style={{ marginBottom: 16 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar libro por título o autor…"
-        />
-        <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? <span className="spin" /> : 'Buscar'}
-        </button>
-      </form>
+    <div className="stack">
+      <div>
+        <form onSubmit={doSearch} className="row" style={{ marginBottom: 16 }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar libro por título o autor…"
+          />
+          <button className="btn btn-primary" type="submit" disabled={loading}>
+            {loading ? <span className="spin" /> : 'Buscar'}
+          </button>
+        </form>
 
-      <p className="muted" style={{ fontSize: '0.8rem', marginTop: -8 }}>
-        Datos de Open Library · no necesita API key
-      </p>
+        <p className="muted" style={{ fontSize: '0.8rem', marginTop: -8 }}>
+          Open Library + Google Books · no necesita API key
+        </p>
 
-      {error && <div className="banner danger">{error}</div>}
+        {error && <div className="banner danger">{error}</div>}
 
-      <div className="stack">
-        {results.map((b) => (
-          <div className="search-result" key={b.key}>
-            <Link to={`/preview/book/${encodeURIComponent(b.key)}`} state={b}>
-              {b.cover ? (
-                <img src={b.cover} alt={b.title} loading="lazy" />
-              ) : (
-                <div className="thumb">📖</div>
-              )}
-            </Link>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Link
-                to={`/preview/book/${encodeURIComponent(b.key)}`}
-                state={b}
-                style={{ fontWeight: 600 }}
-              >
-                {b.title} {b.year ? <span className="muted">({b.year})</span> : null}
+        <div className="stack">
+          {results.map((b) => (
+            <div className="search-result" key={`${b.source}-${b.key}`}>
+              <Link to={`/preview/book/${encodeURIComponent(b.key)}`} state={b}>
+                {b.cover ? (
+                  <img src={b.cover} alt={b.title} loading="lazy" />
+                ) : (
+                  <div className="thumb">📖</div>
+                )}
               </Link>
-              <div style={{ margin: '4px 0' }}>
-                <span className="badge">📖 Libro</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link
+                  to={`/preview/book/${encodeURIComponent(b.key)}`}
+                  state={b}
+                  style={{ fontWeight: 600 }}
+                >
+                  {b.title} {b.year ? <span className="muted">({b.year})</span> : null}
+                </Link>
+                <div style={{ margin: '4px 0' }}>
+                  <span className="badge">📖 {BOOK_SOURCE_LABEL[b.source]}</span>
+                </div>
+                <p className="muted" style={{ fontSize: '0.82rem', margin: '4px 0 8px' }}>
+                  {b.author ?? 'Autor desconocido'}
+                  {b.pages ? ` · ${b.pages} págs.` : ''}
+                </p>
+                <Link
+                  to={`/preview/book/${encodeURIComponent(b.key)}`}
+                  state={b}
+                  className="btn btn-sm btn-primary"
+                >
+                  👁 Ver detalles
+                </Link>
               </div>
-              <p className="muted" style={{ fontSize: '0.82rem', margin: '4px 0 8px' }}>
-                {b.author ?? 'Autor desconocido'}
-                {b.pages ? ` · ${b.pages} págs.` : ''}
-              </p>
-              <Link
-                to={`/preview/book/${encodeURIComponent(b.key)}`}
-                state={b}
-                className="btn btn-sm btn-primary"
-              >
-                👁 Ver detalles
-              </Link>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      <section className="card">
+        <h3 style={{ marginTop: 0 }}>¿No aparece? Apúntalo a mano</h3>
+        <p className="muted" style={{ fontSize: '0.85rem' }}>
+          Útil para manga, ediciones raras o cualquier libro que no encuentres arriba.
+        </p>
+        <div className="field">
+          <input
+            value={manualTitle}
+            onChange={(e) => setManualTitle(e.target.value)}
+            placeholder="Título"
+          />
+        </div>
+        <div className="field">
+          <input
+            value={manualAuthor}
+            onChange={(e) => setManualAuthor(e.target.value)}
+            placeholder="Autor (opcional)"
+          />
+        </div>
+        <div className="field">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={manualPages}
+            onChange={(e) => setManualPages(e.target.value)}
+            placeholder="Páginas totales (opcional)"
+          />
+        </div>
+        <button
+          className="btn btn-primary"
+          disabled={!manualTitle.trim() || addingManual}
+          onClick={addManual}
+        >
+          {addingManual ? '…' : 'Apuntar libro'}
+        </button>
+      </section>
     </div>
   )
 }

@@ -58,7 +58,6 @@ export async function addMovieFromTmdb(
     runtime: m.runtime,
     status,
     rating: 0,
-    tags: [],
     addedAt: Date.now(),
     startedAt: status === 'completed' ? Date.now() : undefined,
     completedAt: status === 'completed' ? Date.now() : undefined,
@@ -99,7 +98,6 @@ export async function addSeriesFromTmdb(
     runtime: s.episodeRuntime,
     status,
     rating: 0,
-    tags: [],
     addedAt: Date.now(),
   }
   await db.items.add(item)
@@ -120,6 +118,7 @@ export async function addSeriesFromTmdb(
     title: e.title,
     airDate: e.airDate,
     runtime: e.runtime,
+    still: posterUrl(e.stillPath, 'w185'),
     watched: false,
   }))
   if (episodes.length) await db.episodes.bulkAdd(episodes)
@@ -164,6 +163,7 @@ export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResu
       title: e.title,
       airDate: e.airDate,
       runtime: e.runtime,
+      still: posterUrl(e.stillPath, 'w185'),
       watched: false,
     }))
   if (nuevos.length) await db.episodes.bulkAdd(nuevos)
@@ -312,20 +312,28 @@ export async function deleteItem(itemId: string): Promise<void> {
 
 /** Añade un libro desde Open Library. Devuelve el id local. */
 export async function addBook(
-  book: { key: string; title: string; author?: string; year?: number; cover?: string; pages?: number },
+  book: {
+    key: string
+    source: 'openlibrary' | 'googlebooks'
+    title: string
+    author?: string
+    year?: number
+    cover?: string
+    pages?: number
+  },
   status: Status = 'plan',
 ): Promise<string> {
   const existing = await db.items
     .where('type')
     .equals('book')
-    .and((i) => i.source === 'openlibrary' && i.sourceId === book.key)
+    .and((i) => i.source === book.source && i.sourceId === book.key)
     .first()
   if (existing) return existing.id
 
   const item: Item = {
     id: newId(),
     type: 'book',
-    source: 'openlibrary',
+    source: book.source,
     sourceId: book.key,
     title: book.title,
     author: book.author,
@@ -335,7 +343,27 @@ export async function addBook(
     currentPage: 0,
     status,
     rating: 0,
-    tags: [],
+    addedAt: Date.now(),
+  }
+  await db.items.add(item)
+  return item.id
+}
+
+/** Añade un libro a mano, sin buscarlo en ninguna fuente (mangas raros, ediciones locales…). */
+export async function addManualBook(
+  data: { title: string; author?: string; pages?: number },
+  status: Status = 'plan',
+): Promise<string> {
+  const item: Item = {
+    id: newId(),
+    type: 'book',
+    source: 'manual',
+    title: data.title,
+    author: data.author,
+    totalPages: data.pages,
+    currentPage: 0,
+    status,
+    rating: 0,
     addedAt: Date.now(),
   }
   await db.items.add(item)
@@ -403,7 +431,6 @@ export async function addVideo(video: VideoInput): Promise<string> {
     url: `https://www.youtube.com/watch?v=${video.videoId}`,
     status: 'completed',
     rating: 0,
-    tags: [],
     addedAt: Date.now(),
     startedAt: watchedAt,
     completedAt: watchedAt,
@@ -421,7 +448,6 @@ export async function addManualVideo(title: string): Promise<string> {
     title,
     status: 'completed',
     rating: 0,
-    tags: [],
     addedAt: Date.now(),
     completedAt: Date.now(),
   }
@@ -459,7 +485,6 @@ export async function importVideos(entries: VideoInput[]): Promise<ImportVideosR
       url: `https://www.youtube.com/watch?v=${v.videoId}`,
       status: 'completed',
       rating: 0,
-      tags: [],
       addedAt: Date.now(),
       startedAt: watchedAt,
       completedAt: watchedAt,

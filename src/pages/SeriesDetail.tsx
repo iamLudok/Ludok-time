@@ -120,7 +120,7 @@ export default function SeriesDetail() {
         </p>
       )}
 
-      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="tv" />}
+      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="tv" title={item.title} />}
 
       {tmdbId && (
         <SimilarTitles tmdbId={tmdbId} kind="tv" originalLanguage={tmdbData?.originalLanguage} />

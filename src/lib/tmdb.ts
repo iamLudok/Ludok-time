@@ -197,6 +197,7 @@ export interface TmdbEpisode {
   title?: string
   airDate?: string
   runtime?: number
+  stillPath?: string
 }
 
 export async function getSeasonEpisodes(seriesId: number, season: number): Promise<TmdbEpisode[]> {
@@ -207,6 +208,7 @@ export async function getSeasonEpisodes(seriesId: number, season: number): Promi
       name?: string
       air_date?: string
       runtime?: number
+      still_path?: string | null
     }>
   }>(`/tv/${seriesId}/season/${season}`)
   return (raw.episodes ?? []).map((e) => ({
@@ -215,6 +217,7 @@ export async function getSeasonEpisodes(seriesId: number, season: number): Promi
     title: e.name,
     airDate: e.air_date,
     runtime: e.runtime,
+    stillPath: e.still_path ?? undefined,
   }))
 }
 

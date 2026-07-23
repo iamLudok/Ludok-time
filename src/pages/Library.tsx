@@ -24,9 +24,12 @@ const STATUS_FILTERS: { key: Status | 'all'; label: string }[] = [
   { key: 'dropped', label: 'Abandonado' },
 ]
 
+type SortBy = 'recent' | 'rating' | 'az'
+
 export default function Library() {
   const [type, setType] = useState<TypeFilter>('all')
   const [status, setStatus] = useState<Status | 'all'>('all')
+  const [sortBy, setSortBy] = useState<SortBy>('recent')
 
   const items = useLiveQuery(
     () => db.items.orderBy('addedAt').reverse().toArray(),
@@ -41,11 +44,32 @@ export default function Library() {
   const filtered = library.filter(
     (i) => matchesType(i) && (status === 'all' || i.status === status),
   )
+  // Ya vienen de Dexie ordenados por fecha de alta (reciente primero); para
+  // "mejor valorado" no hace falta un concepto de favorito aparte, la propia
+  // valoración ya distingue lo que más te gustó.
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'rating') return b.rating - a.rating || b.addedAt - a.addedAt
+    if (sortBy === 'az') return a.title.localeCompare(b.title, 'es')
+    return 0
+  })
   const watchingSeries = library.filter((i) => i.type === 'series' && i.status === 'watching')
 
   return (
     <div>
-      <h2 className="page-title">Mi biblioteca</h2>
+      <div className="row spread" style={{ marginBottom: 0 }}>
+        <h2 className="page-title" style={{ margin: 0 }}>
+          Mi biblioteca
+        </h2>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortBy)}
+          style={{ width: 'auto' }}
+        >
+          <option value="recent">Recientes</option>
+          <option value="rating">⭐ Mejor valorado</option>
+          <option value="az">A-Z</option>
+        </select>
+      </div>
 
       <ContinueWatching items={watchingSeries} />
 
@@ -72,7 +96,7 @@ export default function Library() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="empty">
           <div className="big">🍿</div>
           <p>
@@ -84,7 +108,7 @@ export default function Library() {
         </div>
       ) : (
         <div className="grid">
-          {filtered.map((item) => (
+          {sorted.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
         </div>

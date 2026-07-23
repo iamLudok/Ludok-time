@@ -5,8 +5,9 @@ const SEARCH = 'https://openlibrary.org/search.json'
 const COVERS = 'https://covers.openlibrary.org/b/id'
 
 export interface BookResult {
-  /** clave de la obra, p.ej. "/works/OL893415W". */
+  /** clave de la obra: id de Open Library o de Google Books, según `source`. */
   key: string
+  source: 'openlibrary' | 'googlebooks'
   title: string
   author?: string
   year?: number
@@ -45,6 +46,7 @@ export async function searchBooks(query: string): Promise<BookResult[]> {
 
   return (data.docs ?? []).map((d) => ({
     key: d.key,
+    source: 'openlibrary' as const,
     title: d.title,
     author: d.author_name?.[0],
     year: d.first_publish_year,

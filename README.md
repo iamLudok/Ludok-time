@@ -25,7 +25,7 @@ npm run preview  # sirve el build (para probar la PWA instalable)
 |---|---|---|
 | 📺 Series | TMDB | Episodio a episodio, con "ver siguiente" |
 | 🎬 Películas | TMDB | Vista / pendiente |
-| 📖 Libros | Open Library (sin API key) | **Por página**, con % leído. Fecha de "leído" editable |
+| 📖 Libros | Open Library + Google Books, o a mano | **Por página**, con % leído. Fecha de "leído" editable |
 | ▶️ Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
 
 **Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca ni en los
@@ -47,6 +47,12 @@ directo a su ficha real.
 En la Biblioteca, arriba de todo, aparece un bloque con tus series en estado "Viendo" y su
 próximo episodio, con un botón para marcarlo visto ahí mismo — sin entrar en la ficha.
 
+## Ordenar y valorar (sin favoritos aparte)
+
+No hay un concepto de "favorito": para eso ya está la valoración (0-10, en la ficha de cada
+título). En la Biblioteca puedes ordenar por **Recientes**, **⭐ Mejor valorado** o **A-Z** — así
+los que más te gustaron (los de nota alta) suben solos arriba sin necesitar nada más.
+
 ## Fechas de "visto" (editables)
 
 No hay un diario global: cada episodio, película, libro o serie completa muestra su propia fecha
@@ -60,12 +66,17 @@ fecha nunca se pisa sola: si desmarcas un episodio por error y lo vuelves a marc
 
 En la ficha de una serie, cada temporada se puede plegar/desplegar tocando su cabecera (▾/▸) —
 útil en series largas para no tener que escrollear sin parar. Por defecto solo está abierta la
-temporada donde vas (la del próximo episodio pendiente); el resto empiezan plegadas.
+temporada donde vas (la del próximo episodio pendiente); el resto empiezan plegadas. Cada episodio
+muestra su fotograma (still de TMDB) cuando está disponible, igual que TV Time.
 
 ## Dónde verla y próximo episodio
 
 En la ficha de cada serie/película se consulta TMDB en vivo (datos de JustWatch) para mostrar en
-qué plataformas está disponible en España — con suscripción, alquiler o compra.
+qué plataformas está disponible en España — con suscripción, alquiler o compra. Al tocar el logo
+de una plataforma se abre una **búsqueda de ese título dentro de esa app/web** (Netflix, Prime
+Video, Disney+, HBO Max, Movistar+, Filmin, Apple TV, Google Play, Rakuten TV, SkyShowtime — ver
+`lib/streamingLinks.ts`). TMDB no da un enlace exacto al título en cada plataforma, así que esto
+es lo más cercano sin tener que abrir la app y buscar a mano.
 
 En la ficha de una serie que sigue en emisión (justo debajo de la cabecera) siempre verás algún
 aviso sobre el próximo episodio:
@@ -151,9 +162,6 @@ Detalle importante del funcionamiento de las PWA:
 Para que no te quedes semanas con una versión antigua, [`src/lib/updates.ts`](src/lib/updates.ts)
 comprueba si hay versión nueva **cada hora y cada vez que vuelves a la app**.
 
-Además, las notas y etiquetas de cada título **se guardan solas** al salir del campo, así que ni
-siquiera se pierde texto a medio escribir.
-
 ## Instalar como app (PWA)
 
 Abre la web en el navegador del móvil y usa **"Añadir a pantalla de inicio"** / **"Instalar app"**.
@@ -166,7 +174,8 @@ En escritorio (Chrome/Edge) aparece un icono de instalar en la barra de direccio
 
 ```
 src/
-  lib/         # lógica: db (Dexie), tmdb, openlibrary, youtube, backup, library, settings
+  lib/         # lógica: db (Dexie), tmdb, openlibrary, googlebooks, youtube, streamingLinks,
+               # backup, library, settings
   components/  # ItemCard, EpisodeList, ContinueWatching, WhereToWatch, NextEpisodeCountdown…
   pages/       # Library, Search, Preview, PreviewBook, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
   types.ts     # modelo de datos

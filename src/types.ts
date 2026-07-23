@@ -3,7 +3,7 @@
 
 export type MediaType = 'series' | 'movie' | 'book' | 'youtube' | 'custom'
 
-export type MediaSource = 'tmdb' | 'openlibrary' | 'youtube' | 'manual'
+export type MediaSource = 'tmdb' | 'openlibrary' | 'googlebooks' | 'youtube' | 'manual'
 
 export type Status = 'plan' | 'watching' | 'completed' | 'on_hold' | 'dropped'
 
@@ -31,8 +31,6 @@ export interface Item {
   status: Status
   /** valoración 0–10, 0 = sin valorar. */
   rating: number
-  tags: string[]
-  notes?: string
   addedAt: number
   startedAt?: number
   completedAt?: number
@@ -46,6 +44,8 @@ export interface Episode {
   title?: string
   airDate?: string
   runtime?: number
+  /** URL del fotograma del episodio (still de TMDB), si lo hay. */
+  still?: string
   watched: boolean
   watchedAt?: number
 }

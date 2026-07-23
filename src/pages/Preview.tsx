@@ -164,7 +164,7 @@ export default function Preview() {
         </section>
       )}
 
-      <WhereToWatch tmdbId={id} kind={isSeries ? 'tv' : 'movie'} />
+      <WhereToWatch tmdbId={id} kind={isSeries ? 'tv' : 'movie'} title={data.title} />
 
       <SimilarTitles
         tmdbId={id}
