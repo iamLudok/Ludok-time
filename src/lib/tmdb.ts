@@ -130,7 +130,14 @@ export interface TmdbSeries {
   seasons: TmdbSeason[]
   /** Próximo episodio a emitir, si la serie sigue en emisión y TMDB lo sabe. */
   nextEpisode?: TmdbNextEpisode
-  status?: string
+  /**
+   * Si la serie sigue en producción. OJO: usar esto y no `status` para saber
+   * si "ya terminó" — pedimos los datos en es-ES y TMDB traduce `status`
+   * ("Ended" → "Finalizada"), así que compararlo con los textos en inglés
+   * nunca coincide de forma fiable. `in_production` es un booleano y no se
+   * traduce.
+   */
+  inProduction?: boolean
 }
 
 export async function getSeries(id: number): Promise<TmdbSeries> {
@@ -141,7 +148,7 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
     overview?: string
     first_air_date?: string
     episode_run_time?: number[]
-    status?: string
+    in_production?: boolean
     seasons?: Array<{ season_number: number; episode_count: number; name: string }>
     next_episode_to_air?: {
       season_number: number
@@ -157,7 +164,7 @@ export async function getSeries(id: number): Promise<TmdbSeries> {
     overview: raw.overview,
     year: yearFrom(raw.first_air_date),
     episodeRuntime: raw.episode_run_time?.[0],
-    status: raw.status,
+    inProduction: raw.in_production,
     seasons: (raw.seasons ?? [])
       .filter((s) => s.season_number > 0) // ignoramos "Especiales" (temporada 0)
       .map((s) => ({

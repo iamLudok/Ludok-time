@@ -4,9 +4,6 @@ import { syncSeriesEpisodes } from '../lib/library'
 import { toast } from '../lib/toast'
 import type { Episode } from '../types'
 
-/** TMDB ya no va a anunciar más episodios para estos estados. */
-const FINISHED_STATUSES = ['Ended', 'Canceled']
-
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + 'T00:00').getTime()
   const today = new Date()
@@ -31,7 +28,7 @@ export default function NextEpisodeCountdown({
   localEpisodes: Episode[]
 }) {
   const [series, setSeries] = useState<
-    { status?: string; nextEpisode?: TmdbNextEpisode } | null | undefined
+    { inProduction?: boolean; nextEpisode?: TmdbNextEpisode } | null | undefined
   >(undefined)
   const [syncing, setSyncing] = useState(false)
 
@@ -39,7 +36,7 @@ export default function NextEpisodeCountdown({
     let alive = true
     setSeries(undefined)
     getSeries(tmdbId)
-      .then((s) => alive && setSeries({ status: s.status, nextEpisode: s.nextEpisode }))
+      .then((s) => alive && setSeries({ inProduction: s.inProduction, nextEpisode: s.nextEpisode }))
       .catch(() => alive && setSeries(null)) // fallo de red: no molestar, aviso secundario
     return () => {
       alive = false
@@ -47,7 +44,8 @@ export default function NextEpisodeCountdown({
   }, [tmdbId])
 
   if (series === undefined || series === null) return null
-  if (series.status && FINISHED_STATUSES.includes(series.status)) return null
+  // Serie ya terminada/cancelada: no tiene sentido preguntar por el próximo episodio.
+  if (series.inProduction === false) return null
 
   const next = series.nextEpisode
   const haveLocally =

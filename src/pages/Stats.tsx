@@ -5,12 +5,13 @@ import type { Item } from '../types'
 const DEFAULT_EPISODE_MIN = 40
 const DEFAULT_MOVIE_MIN = 110
 
-function fmtHours(minutes: number): string {
-  if (minutes <= 0) return '0 h'
-  const h = Math.round(minutes / 60)
-  if (h < 24) return `${h} h`
-  const days = Math.floor(h / 24)
-  return `${days} d ${h % 24} h`
+/** Siempre "X d X h X min", incluidos los ceros, para un formato consistente. */
+function fmtDuration(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes))
+  const days = Math.floor(total / 1440)
+  const hours = Math.floor((total % 1440) / 60)
+  const mins = total % 60
+  return `${days} d ${hours} h ${mins} min`
 }
 
 interface Stat {
@@ -99,7 +100,7 @@ export default function Stats() {
           { n: seriesItems.length, l: 'En biblioteca' },
           { n: seriesCompleted, l: 'Completadas' },
           { n: watchedEps.length, l: 'Episodios vistos' },
-          { n: fmtHours(seriesMinutes), l: 'Tiempo visto' },
+          { n: fmtDuration(seriesMinutes), l: 'Tiempo visto' },
         ]}
         note={
           watchedEps.length > 0
@@ -116,7 +117,7 @@ export default function Stats() {
         stats={[
           { n: movies.length, l: 'En biblioteca' },
           { n: moviesWatched.length, l: 'Vistas' },
-          { n: fmtHours(moviesMinutes), l: 'Tiempo visto' },
+          { n: fmtDuration(moviesMinutes), l: 'Tiempo visto' },
         ]}
         note={
           moviesWatched.length > 0
