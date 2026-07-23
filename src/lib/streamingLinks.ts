@@ -32,3 +32,16 @@ export function providerSearchUrl(providerName: string, title: string): string |
   )
   return key ? SEARCH_URL_BY_PROVIDER[key](title) : null
 }
+
+/**
+ * Nombre base de una plataforma, sin la variante de "con anuncios" (TMDB
+ * lista "Netflix" y "Netflix Standard with Ads" como proveedores distintos,
+ * aunque para nosotros son el mismo logo/enlace). Se usa solo para agrupar,
+ * no para mostrar.
+ */
+export function baseProviderName(providerName: string): string {
+  return providerName
+    .replace(/\s*(standard|basic|premium)?\s*with ads.*$/i, '')
+    .trim()
+    .toLowerCase()
+}

@@ -53,6 +53,8 @@ export interface Episode {
 export interface Settings {
   id: 'app'
   tmdbApiKey: string
+  /** Opcional: sin ella Google Books comparte una cuota diaria anónima que se agota fácil. */
+  googleBooksApiKey?: string
   theme: 'dark' | 'light' | 'system'
   lastBackup: number
   schemaVersion: number

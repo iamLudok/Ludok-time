@@ -131,6 +131,7 @@ const BOOK_SOURCE_LABEL: Record<BookResult['source'], string> = {
 
 function BookSearch() {
   const navigate = useNavigate()
+  const settings = useSettings()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<BookResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -148,14 +149,19 @@ function BookSearch() {
     try {
       // Dos fuentes independientes: si una falla (p. ej. límite diario de
       // Google Books sin API key), la otra sigue funcionando igual.
-      const [ol, gb] = await Promise.allSettled([searchBooks(query), searchGoogleBooks(query)])
+      const [ol, gb] = await Promise.allSettled([
+        searchBooks(query),
+        searchGoogleBooks(query, settings.googleBooksApiKey || undefined),
+      ])
       const combined = [
         ...(ol.status === 'fulfilled' ? ol.value : []),
         ...(gb.status === 'fulfilled' ? gb.value : []),
       ]
       setResults(combined)
-      if (combined.length === 0 && ol.status === 'rejected' && gb.status === 'rejected') {
+      if (ol.status === 'rejected' && gb.status === 'rejected') {
         setError('No se pudo buscar en ninguna fuente. Prueba a apuntarlo a mano abajo.')
+      } else if (gb.status === 'rejected') {
+        setError(gb.reason instanceof Error ? gb.reason.message : 'Google Books no respondió.')
       }
     } finally {
       setLoading(false)

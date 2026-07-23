@@ -100,6 +100,7 @@ export async function importBackup(
       await db.settings.put({
         ...current,
         tmdbApiKey: parsed.settings.tmdbApiKey || current.tmdbApiKey,
+        googleBooksApiKey: parsed.settings.googleBooksApiKey || current.googleBooksApiKey,
         theme: parsed.settings.theme || current.theme,
         id: 'app',
       })

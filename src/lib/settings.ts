@@ -5,6 +5,7 @@ import type { Settings } from '../types'
 export const DEFAULT_SETTINGS: Settings = {
   id: 'app',
   tmdbApiKey: '',
+  googleBooksApiKey: '',
   theme: 'system',
   lastBackup: 0,
   schemaVersion: SCHEMA_VERSION,

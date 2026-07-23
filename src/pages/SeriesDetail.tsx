@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
-import { setEpisodeWatched, updateItem } from '../lib/library'
+import { setEpisodeWatched, updateItem, backfillEpisodeStills } from '../lib/library'
 import { getSeries, type TmdbSeries } from '../lib/tmdb'
 import EpisodeList from '../components/EpisodeList'
 import DetailControls from '../components/DetailControls'
@@ -41,6 +41,13 @@ export default function SeriesDetail() {
       alive = false
     }
   }, [tmdbId])
+
+  // Series añadidas antes de que existieran las fotos de episodio no las
+  // tienen guardadas: las rellenamos una vez al entrar, sin tocar lo visto.
+  useEffect(() => {
+    if (!id || !tmdbId) return
+    backfillEpisodeStills(id).catch(() => {})
+  }, [id, tmdbId])
 
   if (item === undefined) return <div className="empty">Cargando…</div>
   if (item === null || !item) {

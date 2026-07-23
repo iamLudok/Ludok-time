@@ -170,6 +170,40 @@ export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResu
   return { added: nuevos.length, failedSeasons }
 }
 
+/**
+ * Rellena la foto (still) de episodios que ya estaban guardados de antes de
+ * que existiera esta función — no toca visto/fecha de ninguno. Solo pide a
+ * TMDB las temporadas que de verdad tienen algún episodio sin foto.
+ */
+export async function backfillEpisodeStills(itemId: string): Promise<number> {
+  const item = await db.items.get(itemId)
+  if (!item || item.type !== 'series' || item.source !== 'tmdb' || !item.sourceId) return 0
+
+  const existing = await db.episodes.where('itemId').equals(itemId).toArray()
+  const missing = existing.filter((e) => !e.still)
+  if (!missing.length) return 0
+
+  const tmdbId = Number(item.sourceId)
+  const seasons = [...new Set(missing.map((e) => e.season))]
+  const { results } = await mapWithConcurrency(seasons, 4, (season) =>
+    getSeasonEpisodes(tmdbId, season),
+  )
+  const stillByKey = new Map(
+    results
+      .flat()
+      .filter((e) => e.stillPath)
+      .map((e) => [`${e.season}-${e.episode}`, posterUrl(e.stillPath, 'w185')]),
+  )
+
+  const updates = missing
+    .map((e) => ({ e, still: stillByKey.get(`${e.season}-${e.episode}`) }))
+    .filter((x): x is { e: Episode; still: string } => !!x.still)
+  if (!updates.length) return 0
+
+  await db.episodes.bulkPut(updates.map(({ e, still }) => ({ ...e, still })))
+  return updates.length
+}
+
 export function epLabel(ep: Episode): string {
   const code = `S${ep.season}E${ep.episode}`
   return ep.title ? `${code} · ${ep.title}` : code

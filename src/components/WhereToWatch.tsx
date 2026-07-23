@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getWatchProviders, type WatchProviders } from '../lib/tmdb'
-import { providerSearchUrl } from '../lib/streamingLinks'
+import { providerSearchUrl, baseProviderName } from '../lib/streamingLinks'
 
 /**
  * Dónde ver una serie/película (Netflix, HBO, Prime…) para España. Consulta
@@ -31,10 +31,14 @@ export default function WhereToWatch({
 
   if (!data || data.providers.length === 0) return null
 
-  const flatrate = data.providers.filter((p) => p.type === 'flatrate')
-  const other = data.providers.filter((p) => p.type !== 'flatrate')
-  // Alquiler y compra suelen repetir plataforma: quitamos duplicados por nombre.
-  const otherUnique = [...new Map(other.map((p) => [p.name, p])).values()]
+  // TMDB lista variantes de la misma plataforma como proveedores distintos
+  // (p. ej. "Netflix" y "Netflix Standard with Ads", o alquiler y compra
+  // repitiendo la misma plataforma): quitamos duplicados por nombre base.
+  const dedupe = (list: WatchProviders['providers']) => [
+    ...new Map(list.map((p) => [baseProviderName(p.name), p])).values(),
+  ]
+  const flatrate = dedupe(data.providers.filter((p) => p.type === 'flatrate'))
+  const otherUnique = dedupe(data.providers.filter((p) => p.type !== 'flatrate'))
 
   const Row = ({ label, list }: { label: string; list: typeof data.providers }) => (
     <div style={{ marginBottom: 8 }}>

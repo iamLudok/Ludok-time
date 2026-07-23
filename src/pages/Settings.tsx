@@ -14,18 +14,25 @@ function fmtBytes(n?: number): string {
 export default function SettingsPage() {
   const settings = useSettings()
   const [apiKey, setApiKey] = useState('')
+  const [gbApiKey, setGbApiKey] = useState('')
   const [storage, setStorage] = useState<StorageInfo | null>(null)
   const [importing, setImporting] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => setApiKey(settings.tmdbApiKey), [settings.tmdbApiKey])
+  useEffect(() => setGbApiKey(settings.googleBooksApiKey ?? ''), [settings.googleBooksApiKey])
   useEffect(() => {
     getStorageInfo().then(setStorage)
   }, [])
 
   const saveKey = () => {
     updateSettings({ tmdbApiKey: apiKey.trim() })
+    toast('API key guardada')
+  }
+
+  const saveGbKey = () => {
+    updateSettings({ googleBooksApiKey: gbApiKey.trim() })
     toast('API key guardada')
   }
 
@@ -158,6 +165,36 @@ export default function SettingsPage() {
           />
         </div>
         <button className="btn btn-primary" onClick={saveKey}>
+          Guardar API key
+        </button>
+      </section>
+
+      {/* Google Books */}
+      <section className="card">
+        <h3 style={{ marginTop: 0 }}>📖 API de Google Books (opcional)</h3>
+        <p className="muted" style={{ fontSize: '0.88rem' }}>
+          La búsqueda de libros funciona sin esto, pero sin key propia comparte una cuota diaria
+          anónima que se agota fácil y deja de dar resultados de Google Books hasta el día
+          siguiente (Open Library sigue funcionando igual). Con una key gratuita tienes tu propia
+          cuota: crea un proyecto en{' '}
+          <a
+            href="https://console.cloud.google.com/apis/library/books.googleapis.com"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--accent-2)' }}
+          >
+            Google Cloud Console
+          </a>
+          , activa "Books API" y genera una API key en <em>Credenciales</em>.
+        </p>
+        <div className="field">
+          <input
+            value={gbApiKey}
+            onChange={(e) => setGbApiKey(e.target.value)}
+            placeholder="Pega aquí tu API key de Google Books"
+          />
+        </div>
+        <button className="btn btn-primary" onClick={saveGbKey}>
           Guardar API key
         </button>
       </section>

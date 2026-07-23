@@ -21,13 +21,25 @@ function yearFrom(date?: string): number | undefined {
   return Number.isFinite(y) ? y : undefined
 }
 
-export async function searchGoogleBooks(query: string): Promise<BookResult[]> {
+/**
+ * Sin API key, Google Books usa una cuota diaria anónima compartida por
+ * todo el que pegue a su API sin identificarse — se agota fácilmente y deja
+ * de dar resultados durante horas. Con una key propia (gratis) la cuota es
+ * privada. Se guarda en Ajustes, igual que la de TMDB.
+ */
+export async function searchGoogleBooks(query: string, apiKey?: string): Promise<BookResult[]> {
   if (!query.trim()) return []
   const url = new URL(SEARCH)
   url.searchParams.set('q', query)
   url.searchParams.set('maxResults', '20')
+  if (apiKey) url.searchParams.set('key', apiKey)
 
   const res = await fetch(url.toString())
+  if (res.status === 429) {
+    throw new Error(
+      'Google Books ha agotado su cuota gratuita de hoy (sin API key propia). Prueba con Open Library o añade una key en Ajustes.',
+    )
+  }
   if (!res.ok) throw new Error(`Error de Google Books (${res.status}).`)
   const data = (await res.json()) as { items?: RawVolume[] }
 
