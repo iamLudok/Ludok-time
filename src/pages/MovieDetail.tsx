@@ -5,6 +5,7 @@ import { setStatus, statusLabel, updateItem } from '../lib/library'
 import DetailControls from '../components/DetailControls'
 import WatchedDate from '../components/WatchedDate'
 import WhereToWatch from '../components/WhereToWatch'
+import SimilarTitles from '../components/SimilarTitles'
 import { toast } from '../lib/toast'
 
 export default function MovieDetail() {
@@ -74,6 +75,10 @@ export default function MovieDetail() {
 
       {item.source === 'tmdb' && item.sourceId && (
         <WhereToWatch tmdbId={Number(item.sourceId)} kind="movie" />
+      )}
+
+      {item.source === 'tmdb' && item.sourceId && (
+        <SimilarTitles tmdbId={Number(item.sourceId)} kind="movie" />
       )}
 
       <DetailControls item={item} />

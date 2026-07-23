@@ -59,6 +59,12 @@ aviso sobre el próximo episodio:
 - **Nada** si la serie ya terminó/canceló, o si el próximo episodio ya está en tu lista (en ese
   caso lo gestiona el botón "▶ Ver siguiente").
 
+## También te puede gustar
+
+En la ficha de cada serie/película, una fila de carátulas parecidas por género/temática (TMDB
+"similar"), excluyendo lo que ya tienes en tu biblioteca. Se pueden añadir directamente con el
+botón "+", sin tener que ir a Buscar.
+
 ### Importar tu historial de YouTube
 
 1. Ve a [Google Takeout](https://takeout.google.com/) y pide **solo YouTube → historial**, en **JSON**.

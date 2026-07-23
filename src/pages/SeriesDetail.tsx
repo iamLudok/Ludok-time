@@ -6,6 +6,7 @@ import EpisodeList from '../components/EpisodeList'
 import DetailControls from '../components/DetailControls'
 import WhereToWatch from '../components/WhereToWatch'
 import NextEpisodeCountdown from '../components/NextEpisodeCountdown'
+import SimilarTitles from '../components/SimilarTitles'
 import { toast } from '../lib/toast'
 import type { Episode } from '../types'
 
@@ -83,6 +84,10 @@ export default function SeriesDetail() {
 
       {item.source === 'tmdb' && item.sourceId && (
         <WhereToWatch tmdbId={Number(item.sourceId)} kind="tv" />
+      )}
+
+      {item.source === 'tmdb' && item.sourceId && (
+        <SimilarTitles tmdbId={Number(item.sourceId)} kind="tv" />
       )}
 
       <DetailControls item={item} />

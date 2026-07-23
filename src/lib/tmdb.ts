@@ -263,3 +263,30 @@ export async function getWatchProviders(
     ],
   }
 }
+
+export interface TmdbSimilar {
+  id: number
+  title: string
+  posterPath?: string
+  year?: number
+}
+
+/** Títulos parecidos por género/temática (no por comportamiento de usuarios). */
+export async function getSimilar(id: number, kind: 'movie' | 'tv'): Promise<TmdbSimilar[]> {
+  const data = await tmdbFetch<{
+    results?: Array<{
+      id: number
+      title?: string
+      name?: string
+      poster_path?: string | null
+      release_date?: string
+      first_air_date?: string
+    }>
+  }>(`/${kind}/${id}/similar`)
+  return (data.results ?? []).map((r) => ({
+    id: r.id,
+    title: r.title || r.name || '(sin título)',
+    posterPath: r.poster_path ?? undefined,
+    year: yearFrom(r.release_date || r.first_air_date),
+  }))
+}
