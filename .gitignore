@@ -25,3 +25,7 @@ ludok-time-backup-*.json
 *.njsproj
 *.sln
 *.sw?
+
+LudokTime.apk
+AGENTS.md
+CLAUDE.md
