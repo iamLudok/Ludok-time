@@ -1,186 +1,149 @@
-# Ludok Time 🎬📺
+# Ludok Time
 
-Tu app personal para apuntar todo lo que ves y lees: **series, películas, libros y vídeos de
-YouTube**. Nació porque TV Time se cayó y no quiero volver a perder mi historial: aquí
-**los datos son míos** y viven en mi dispositivo.
+App Android para apuntar todo lo que veo y leo: **series, películas, libros y vídeos de YouTube**.
+Nació porque TV Time se cayó y perdí mi historial entero. Aquí **los datos son míos** y viven en mi
+móvil.
 
-- **Local-first**: todo se guarda en el navegador (IndexedDB). Sin servidores, sin cuentas.
-- **A prueba de pérdidas**: exporta/importa una copia JSON cuando quieras y un aviso te recuerda
-  hacer copia si llevas mucho sin hacerla.
-- **PWA**: se instala en el móvil como una app y funciona sin conexión.
-- **Catálogo TMDB**: buscas series/pelis con sus carátulas, temporadas y episodios.
+React Native con Expo SDK 57.
 
-## Puesta en marcha
+## Lo que manda: no perder datos nunca
+
+Todo lo demás va después.
+
+- Los datos viven en `/data/data/com.ludok.time/`. No hay cuentas ni servidores.
+- Copia de seguridad en JSON, exportable e importable en cualquier momento.
+- **Copia automática a un Nextcloud propio** al abrir la app estando en WiFi, un fichero por día.
+- Aviso en la Biblioteca cuando llevas mucho sin copia.
+- La capa de datos **se prueba de verdad**, no solo con tipos (ver más abajo).
+
+## Qué se registra
+
+| Tipo | Fuente | Progreso |
+|---|---|---|
+| Series | TMDB | Episodio a episodio, con «ver siguiente» y el fotograma de cada uno |
+| Películas | TMDB | Vista / pendiente |
+| Libros | Open Library + Google Books, o a mano | Por página, con % leído |
+| Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
+
+Los vídeos viven en su pestaña y no entran en la biblioteca ni en los contadores: al importar el
+historial de Takeout pueden ser miles y sepultarían el resto.
+
+## Arranque
 
 ```bash
 npm install
-npm run dev      # desarrollo en http://localhost:5173
-npm run build    # build de producción en dist/
-npm run preview  # sirve el build (para probar la PWA instalable)
+npm run android      # instala y abre en un móvil conectado por adb
+npm run typecheck    # tipos de la app y de los scripts de verificación
+npm run verify       # comprueba la capa de datos
 ```
 
-## Qué puedes registrar
+Hace falta JDK 17, Android SDK con API 36 y `adb`.
 
-| Tipo | Fuente | Cómo se sigue el progreso |
-|---|---|---|
-| 📺 Series | TMDB | Episodio a episodio, con "ver siguiente" |
-| 🎬 Películas | TMDB | Vista / pendiente |
-| 📖 Libros | Open Library + Google Books, o a mano | **Por página**, con % leído. Fecha de "leído" editable |
-| ▶️ Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
+> Gradle pide un toolchain de **Java 17**. Si falla con «Cannot find a Java installation matching
+> languageVersion=17» teniendo un JDK más nuevo, apunta al que Gradle ya se descargó:
+>
+> ```bash
+> export JAVA_HOME=~/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2
+> ```
 
-**Los vídeos de YouTube viven en su propia pestaña** y no aparecen en la biblioteca ni en los
-contadores de series/pelis. Es a propósito: al importar el historial pueden entrar miles y
-sepultarían el resto.
+## Compilar un APK
 
-## Vista previa antes de añadir
+```bash
+npm run build:apk                    # todas las arquitecturas (~96 MB)
+./scripts/build-apk.sh --compartir   # solo arm64-v8a (~40 MB), para repartir
+# → android/app/build/outputs/apk/release/app-release.apk
+```
 
-Al buscar, cada resultado indica si es **📺 Serie**, **🎬 Película** o **📖 Libro** y solo tiene un
-botón, "👁 Ver detalles" (nada de "Añadir" directo — siempre puedes añadirlo después de ver la
-ficha). Igual desde "También te puede gustar", tocando la carátula. La vista previa muestra datos
-en vivo: sinopsis, temporadas con su número de episodios, dónde verla (series/pelis vía TMDB) o
-autor/páginas (libros vía Open Library). Nada se guarda hasta que pulsas "Añadir" dentro de la
-ficha previa; si el título ya está en tu biblioteca, en vez de añadir verás un botón para ir
-directo a su ficha real.
+Tiene que ser **release**, no debug: en debug el JavaScript no va dentro del APK, se carga del
+servidor de Metro, así que un APK de debug no funciona sin el ordenador delante.
 
-## Continuar viendo
+Instalar: `adb install -r app-release.apk`. Con `-r` se instala **encima** conservando los datos,
+siempre que la firma sea la misma.
 
-En la Biblioteca, arriba de todo, aparece un bloque con tus series en estado "Viendo" y su
-próximo episodio, con un botón para marcarlo visto ahí mismo — sin entrar en la ficha.
+### ⚠️ El keystore hay que guardarlo como oro
 
-## Ordenar y valorar (sin favoritos aparte)
+La firma vive en `release.jks` + `keystore.properties`, los dos fuera del repo (en `.gitignore`).
 
-No hay un concepto de "favorito": para eso ya está la valoración (0-10, en la ficha de cada
-título). En la Biblioteca puedes ordenar por **Recientes**, **⭐ Mejor valorado** o **A-Z** — así
-los que más te gustaron (los de nota alta) suben solos arriba sin necesitar nada más.
+Android solo deja instalar un APK **encima** de otro si van firmados con la misma clave. Si se
+pierden, la única salida es **desinstalar** para poner la versión nueva — y desinstalar **borra los
+datos de la app**.
 
-## Fechas de "visto" (editables)
+Guárdalos junto a las copias de seguridad. Es lo único de este proyecto que no se puede regenerar.
 
-No hay un diario global: cada episodio, película, libro o serie completa muestra su propia fecha
-de "visto" (junto al episodio, en su ficha). Al marcar algo se guarda "hoy", pero puedes tocar la
-fecha (✏️) y ponerla a mano, o quitarla del todo si no la recuerdas — útil al recuperar historial
-antiguo (p. ej. de TV Time) sin que quede como si lo hubieras visto todo en el mismo minuto. Esa
-fecha nunca se pisa sola: si desmarcas un episodio por error y lo vuelves a marcar, la fecha de
-"serie completada" no cambia.
+## Verificación de la capa de datos
 
-## Temporadas plegables
+Los datos son la parte que no puede fallar, así que se prueban ejecutando **el mismo código que
+corre en el móvil** contra un SQLite de escritorio:
 
-En la ficha de una serie, cada temporada se puede plegar/desplegar tocando su cabecera (▾/▸) —
-útil en series largas para no tener que escrollear sin parar. Por defecto solo está abierta la
-temporada donde vas (la del próximo episodio pendiente); el resto empiezan plegadas. Cada episodio
-muestra su fotograma (still de TMDB) cuando está disponible, igual que TV Time.
+```bash
+npm run verify:data       # formato de copia: ida y vuelta, huecos, volumen, rechazos
+npm run verify:library    # reglas: episodios, estados, libros, vídeos, borrados
+npm run verify:migration  # que actualizar de versión no pierde nada
+npm run verify:real ./ludok-time-backup-2026-07-27.json   # con una copia real
+```
 
-## Dónde verla y próximo episodio
+Esto es posible porque la lógica pide la base de datos a [`src/lib/dbRef.ts`](src/lib/dbRef.ts) en
+vez de crearla ella: [`src/lib/db.ts`](src/lib/db.ts) es el **único** fichero que toca
+`expo-sqlite`.
 
-En la ficha de cada serie/película se consulta TMDB en vivo (datos de JustWatch) para mostrar en
-qué plataformas está disponible en España — con suscripción, alquiler o compra. Al tocar el logo
-de una plataforma se abre una **búsqueda de ese título dentro de esa app/web** (Netflix, Prime
-Video, Disney+, HBO Max, Movistar+, Filmin, Apple TV, Google Play, Rakuten TV, SkyShowtime — ver
-`lib/streamingLinks.ts`). TMDB no da un enlace exacto al título en cada plataforma, así que esto
-es lo más cercano sin tener que abrir la app y buscar a mano.
+Se usa **libsql** y no `better-sqlite3` porque este último es sincrónico y no admite transacciones
+asíncronas, mientras que `expo-sqlite` sí: con libsql la semántica coincide con la real.
 
-En la ficha de una serie que sigue en emisión (justo debajo de la cabecera) siempre verás algún
-aviso sobre el próximo episodio:
+Estas pruebas ya han pillado fallos que habrían corrompido datos en silencio — por ejemplo un
+upsert que mezclaba las filas entre sí al importar.
 
-- **Cuenta atrás** ("en 12 días", "mañana"…) si TMDB ya anuncia fecha y aún no lo tienes
-  localmente, con un botón **🔄 Actualizar** para traerlo en cuanto esté disponible.
-- **"Sin fecha anunciada todavía"** si la serie sigue activa pero TMDB no tiene el dato aún —
-  para que quede claro que la app sí lo ha comprobado, no que algo esté roto.
-- **Nada** si la serie ya terminó/canceló, o si el próximo episodio ya está en tu lista (en ese
-  caso lo gestiona el botón "▶ Ver siguiente").
+## Copia automática a Nextcloud
 
-## También te puede gustar
+En **Ajustes → Copia automática a Nextcloud**: dirección, usuario, contraseña y carpeta. Al abrir la
+app estando en WiFi sube sola, como mucho una vez cada 12 horas, con un fichero por día.
 
-En la ficha de cada serie/película, una fila de carátulas parecidas por género/temática (TMDB
-"similar"), filtradas por **idioma original** para no mezclar cosas de fuera de sitio (p. ej. que
-un anime japonés recomiende series occidentales solo porque comparten género), y excluyendo lo que
-ya tienes en tu biblioteca. Se pueden añadir directamente con el botón "+", sin tener que ir a Buscar.
+Usa una **contraseña de aplicación** de Nextcloud (Ajustes personales → Seguridad), no la de la
+cuenta: se revoca sola sin tocar nada más.
 
-### Importar tu historial de YouTube
+Esa contraseña **no se incluye en las copias exportadas**, a propósito: una copia se comparte y se
+mueve de sitio, y esa contraseña da permiso de escritura sobre tus ficheros — la copia acabaría
+viajando con su propia llave dentro.
 
-1. Ve a [Google Takeout](https://takeout.google.com/) y pide **solo YouTube → historial**, en **JSON**.
-2. En la app: pestaña **Vídeos → Subir watch-history.json**.
-
-Se ignoran anuncios y vídeos borrados, no se duplican los repetidos y se respeta la fecha real en
-que viste cada uno.
-
-## Configurar la API key de TMDB (gratis, 2 minutos)
-
-La búsqueda usa [The Movie Database](https://www.themoviedb.org). Necesitas una API key propia:
-
-1. Crea una cuenta en <https://www.themoviedb.org>.
-2. Ve a **Ajustes → API**: <https://www.themoviedb.org/settings/api>.
-3. Solicita una API key (uso personal). Copia la **API Key (v3 auth)**.
-4. En la app, entra en **Ajustes → API de TMDB**, pega la key y guarda.
-
-La key se guarda solo en tu dispositivo (se incluye en las copias de seguridad).
-
-## No perder los datos nunca (importante)
-
-Los datos viven en el almacenamiento del navegador. Para que estén a salvo:
-
-1. La app pide **almacenamiento persistente** al arrancar (reduce que el navegador los borre).
-   Puedes ver el estado en **Ajustes → Almacenamiento**.
-2. Haz **copias de seguridad** a menudo: **Ajustes → Exportar copia**. Guarda el fichero
-   `ludok-time-backup-*.json` en tu nube o carpeta de Archivos. En el móvil se abre el menú de
-   compartir para mandarlo donde quieras.
-3. Para restaurar (móvil nuevo, borrado accidental…): **Ajustes → Importar copia**. Al elegir el
-   fichero se abre un cuadro con tres opciones claras:
-   - *🔄 Reemplazar todo lo actual*: deja exactamente lo que hay en la copia.
-   - *➕ Fusionar*: añade lo de la copia sin borrar lo que ya tengas.
-   - *Cancelar*: no hace nada.
-
-## Despliegue (GitHub Pages)
-
-La app se publica sola en <https://iamludok.github.io/Ludok-time/> con cada `push` a `master`,
-mediante el workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
-
-Requisito (una sola vez): en GitHub → **Settings → Pages → Build and deployment → Source**,
-elegir **GitHub Actions** (no "Deploy from a branch").
-
-> Importante: lo que se publica es la carpeta `dist/` (el build), no el código fuente.
-> Como Pages sirve la app en el subdirectorio `/Ludok-time/`, `vite.config.ts` fija `base` a esa
-> ruta y el router usa `basename`. El build genera además un `404.html` para que los enlaces
-> directos (p. ej. `/Ludok-time/settings`) funcionen al recargar.
-
-## Cómo se actualiza la app (y por qué tus datos no corren peligro)
-
-El código y los datos viven en sitios separados:
-
-- **El código** (HTML/JS) lo sirve el service worker → es lo que se actualiza.
-- **Tus datos** (biblioteca, episodios vistos, valoraciones, API key) están en
-  **IndexedDB** → una actualización **no los toca nunca**.
-
-Es decir: puedes actualizar mil veces sin perder nada. Está verificado desplegando una versión
-nueva encima de una instalación con datos y comprobando que seguían intactos.
-
-Detalle importante del funcionamiento de las PWA:
-
-> Tras publicar una versión nueva, **la primera vez que abres la app sigues viendo la vieja**.
-> El service worker se descarga la nueva por detrás y entra **en la siguiente apertura**.
-> Es normal, no es un fallo. Si tienes prisa, recarga con `Ctrl+Shift+R`.
-
-Para que no te quedes semanas con una versión antigua, [`src/lib/updates.ts`](src/lib/updates.ts)
-comprueba si hay versión nueva **cada hora y cada vez que vuelves a la app**.
-
-## Instalar como app (PWA)
-
-Abre la web en el navegador del móvil y usa **"Añadir a pantalla de inicio"** / **"Instalar app"**.
-En escritorio (Chrome/Edge) aparece un icono de instalar en la barra de direcciones.
-
-> Nota: para que la PWA funcione bien necesita servirse por HTTPS (o `localhost`). Si la despliegas,
-> usa un hosting con HTTPS (Netlify, Vercel, GitHub Pages, tu propio servidor con TLS…).
+No se usa una tarea en segundo plano a propósito: Android las mata sin avisar y encima no se vería
+si funcionan. Como la app se abre a diario, en la práctica la copia acaba siendo diaria igual.
 
 ## Estructura
 
 ```
+app/                     # rutas (expo-router)
+  (tabs)/                # Biblioteca, Añadir, Vídeos, Stats, Ajustes
+  series|movie|book/[id] # fichas
+  preview/…              # vista previa antes de añadir
 src/
-  lib/         # lógica: db (Dexie), tmdb, openlibrary, googlebooks, youtube, streamingLinks,
-               # backup, library, settings
-  components/  # ItemCard, EpisodeList, ContinueWatching, WhereToWatch, NextEpisodeCountdown…
-  pages/       # Library, Search, Preview, PreviewBook, SeriesDetail, MovieDetail, BookDetail, Videos, Stats, Settings
-  types.ts     # modelo de datos
+  lib/                   # datos y lógica
+  ui/                    # tokens de diseño y componentes base
+  components/            # piezas con lógica de la app
+  hooks/                 # consultas reactivas (useLiveQuery de Drizzle)
+verify/                  # comprobaciones (Node, no van dentro del APK)
+scripts/                 # compilar y firmar el APK
 ```
 
-## Próximos pasos
+## Diseño: «Sala oscura»
 
-- Auto-guardado de la copia en una carpeta/nube propia.
+La carátula es lo único que pone color; la interfaz es monocroma **sin color de acento**, y la
+jerarquía la marca el contraste. El color solo aparece con significado: rojo para borrar, ámbar para
+el aviso de copia. Todo sale de [`src/ui/theme.ts`](src/ui/theme.ts).
+
+Hay tema claro además del oscuro, con el mismo criterio; se elige en Ajustes.
+
+## Historia: antes era una PWA
+
+Hasta julio de 2026 esto era una PWA (Vite + React + Dexie) publicada en GitHub Pages. Se reescribió
+como app nativa por tres motivos: no convencía cómo se veía, no convencía el tacto, y **en
+GrapheneOS no llegaba a ser una app** — Vanadium
+[no soporta WebAPKs](https://discuss.grapheneos.org/d/4175-does-pwa-use-webview-or-vanadium)
+porque se generan en servidores de Google, así que lo que se instalaba era un acceso directo que
+abría el navegador.
+
+De paso se resolvió mejor el miedo original: en la web había que *pedirle* al navegador que no
+borrara los datos (`navigator.storage.persist()`), y podía negarse. En nativo solo desaparecen si
+desinstalas la app.
+
+El formato de las copias se mantiene compatible con el de aquella versión (`SCHEMA_VERSION` sigue
+valiendo 2), así que una copia guardada entonces todavía se puede restaurar. El código web sigue en
+el historial de git.

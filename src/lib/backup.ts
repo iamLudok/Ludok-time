@@ -1,120 +1,63 @@
-import { db, SCHEMA_VERSION } from './db'
-import { getSettings, updateSettings } from './settings'
+// Capa nativa de las copias de seguridad: ficheros, compartir y selector.
+// Toda la lógica de datos vive en `backupCore.ts`, que se prueba aparte.
+import { File, Paths } from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
+import * as DocumentPicker from 'expo-document-picker'
+import { db } from './db'
+import { updateSettings } from './settings'
+import * as core from './backupCore'
 import type { BackupFile } from '../types'
 
-/** Serializa TODA la base de datos a un objeto de copia. */
-export async function exportAll(): Promise<BackupFile> {
-  const [items, episodes, settings] = await Promise.all([
-    db.items.toArray(),
-    db.episodes.toArray(),
-    getSettings(),
-  ])
-  return {
-    app: 'ludok-time',
-    schemaVersion: SCHEMA_VERSION,
-    exportedAt: Date.now(),
-    items,
-    episodes,
-    settings,
-  }
+export type { ImportResult } from './backupCore'
+export { daysSinceBackup } from './backupCore'
+
+export function exportAll(): Promise<BackupFile> {
+  return core.exportAll(db)
+}
+
+export function importBackup(
+  raw: string,
+  mode: 'replace' | 'merge' = 'replace',
+): Promise<core.ImportResult> {
+  return core.importBackup(db, raw, mode)
 }
 
 function backupFilename(): string {
   const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
+  const pad = (x: number) => String(x).padStart(2, '0')
   return `ludok-time-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`
 }
 
 /**
- * Descarga la copia como fichero. En móviles con Web Share API intenta abrir
- * el diálogo de compartir (para guardarla en Archivos/Nextcloud/Drive);
- * si falla, cae a una descarga normal.
+ * Escribe la copia y abre el menú de compartir para guardarla donde quieras
+ * (Archivos, Nextcloud, Drive…). Devuelve la ruta del fichero generado.
  */
-export async function downloadBackup(): Promise<void> {
+export async function shareBackup(): Promise<string> {
   const data = await exportAll()
-  const json = JSON.stringify(data, null, 2)
-  const filename = backupFilename()
-  const blob = new Blob([json], { type: 'application/json' })
+  const file = new File(Paths.cache, backupFilename())
+  file.create({ overwrite: true })
+  file.write(JSON.stringify(data, null, 2))
 
-  const file = new File([blob], filename, { type: 'application/json' })
-  const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean }
-  if (nav.share && nav.canShare?.({ files: [file] })) {
-    try {
-      await nav.share({ files: [file], title: 'Copia de Ludok Time' })
-      await updateSettings({ lastBackup: Date.now() })
-      return
-    } catch (err) {
-      // El usuario canceló o no se pudo compartir: caemos a descarga.
-      if (err instanceof DOMException && err.name === 'AbortError') return
-    }
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(file.uri, {
+      mimeType: 'application/json',
+      dialogTitle: 'Copia de Ludok Time',
+      UTI: 'public.json',
+    })
   }
-
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
   await updateSettings({ lastBackup: Date.now() })
-}
-
-export interface ImportResult {
-  items: number
-  episodes: number
+  return file.uri
 }
 
 /**
- * Importa una copia. Modo 'replace' vacía la base antes; 'merge' añade/actualiza
- * por id sin borrar lo que ya haya.
+ * Abre el selector de ficheros y devuelve el contenido del JSON elegido. Lo usan
+ * tanto importar una copia como importar el historial de YouTube de Takeout.
  */
-export async function importBackup(
-  raw: string,
-  mode: 'replace' | 'merge' = 'replace',
-): Promise<ImportResult> {
-  let parsed: BackupFile
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error('El fichero no es un JSON válido.')
-  }
-  if (parsed.app !== 'ludok-time' || !Array.isArray(parsed.items)) {
-    throw new Error('Esto no parece una copia de Ludok Time.')
-  }
-  if (parsed.schemaVersion > SCHEMA_VERSION) {
-    throw new Error(
-      `La copia es de una versión más nueva (v${parsed.schemaVersion}). Actualiza la app antes de importar.`,
-    )
-  }
-
-  await db.transaction('rw', db.items, db.episodes, db.settings, async () => {
-    if (mode === 'replace') {
-      await Promise.all([db.items.clear(), db.episodes.clear()])
-    }
-    if (parsed.items?.length) await db.items.bulkPut(parsed.items)
-    if (parsed.episodes?.length) await db.episodes.bulkPut(parsed.episodes)
-    // Restauramos la API key y el tema, pero conservamos schemaVersion actual.
-    if (parsed.settings) {
-      const current = await getSettings()
-      await db.settings.put({
-        ...current,
-        tmdbApiKey: parsed.settings.tmdbApiKey || current.tmdbApiKey,
-        googleBooksApiKey: parsed.settings.googleBooksApiKey || current.googleBooksApiKey,
-        theme: parsed.settings.theme || current.theme,
-        id: 'app',
-      })
-    }
+export async function pickJsonFile(): Promise<string | null> {
+  const res = await DocumentPicker.getDocumentAsync({
+    type: ['application/json', 'text/plain', '*/*'],
+    copyToCacheDirectory: true,
   })
-
-  return {
-    items: parsed.items?.length ?? 0,
-    episodes: parsed.episodes?.length ?? 0,
-  }
-}
-
-/** Días transcurridos desde la última copia. Infinity si nunca se ha hecho. */
-export function daysSinceBackup(lastBackup: number): number {
-  if (!lastBackup) return Infinity
-  return Math.floor((Date.now() - lastBackup) / 86_400_000)
+  if (res.canceled || !res.assets?.[0]) return null
+  return await new File(res.assets[0].uri).text()
 }

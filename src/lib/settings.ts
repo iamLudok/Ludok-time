@@ -1,37 +1,26 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db, SCHEMA_VERSION } from './db'
+// Ajustes. Sin imports nativos a propósito: el hook reactivo vive en
+// `src/hooks/useSettings.ts`, para que esta lógica se pueda probar en Node.
+import { eq } from 'drizzle-orm'
+import { getDb } from './dbRef'
+import { settings as settingsTable } from './schema'
+import { DEFAULT_SETTINGS, readSettings, writeSettings } from './backupCore'
 import type { Settings } from '../types'
 
-export const DEFAULT_SETTINGS: Settings = {
-  id: 'app',
-  tmdbApiKey: '',
-  googleBooksApiKey: '',
-  theme: 'system',
-  lastBackup: 0,
-  schemaVersion: SCHEMA_VERSION,
-}
+export { DEFAULT_SETTINGS }
 
-/**
- * Lectura SOLO. Devuelve los ajustes guardados o los por defecto (sin escribir).
- * Seguro para usar dentro de useLiveQuery (que corre en transacción de solo lectura).
- */
-export async function getSettings(): Promise<Settings> {
-  const existing = await db.settings.get('app')
-  return existing ?? DEFAULT_SETTINGS
+/** Lectura sola: devuelve los ajustes guardados o los por defecto (sin escribir). */
+export function getSettings(): Promise<Settings> {
+  return readSettings(getDb())
 }
 
 /** Persiste los ajustes por defecto si aún no existen. Llamar una vez al arrancar. */
 export async function ensureSettings(): Promise<void> {
-  const existing = await db.settings.get('app')
-  if (!existing) await db.settings.put(DEFAULT_SETTINGS)
+  const db = getDb()
+  const rows = await db.select().from(settingsTable).where(eq(settingsTable.id, 'app')).limit(1)
+  if (!rows[0]) await writeSettings(db, DEFAULT_SETTINGS)
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
   const current = await getSettings()
-  await db.settings.put({ ...current, ...patch, id: 'app' })
-}
-
-/** Hook reactivo con los ajustes actuales (o los por defecto mientras carga). */
-export function useSettings(): Settings {
-  return useLiveQuery(() => db.settings.get('app'), [], undefined) ?? DEFAULT_SETTINGS
+  await writeSettings(getDb(), { ...current, ...patch, id: 'app' })
 }

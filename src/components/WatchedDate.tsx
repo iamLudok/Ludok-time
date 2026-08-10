@@ -1,23 +1,24 @@
 import { useState } from 'react'
+import { Pressable, View, StyleSheet, Platform } from 'react-native'
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker'
+import { Txt } from '../ui/Text'
+import { Button } from '../ui/Button'
+import { space } from '../ui/theme'
 
-function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-/** 'YYYY-MM-DD' en hora local, para el value de <input type="date">. */
-function toDateInput(ts: number): string {
-  const d = new Date(ts)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+function fmt(ts: number): string {
+  return new Date(ts).toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 /**
- * Muestra "Visto: 22 jul 2026" y permite corregir la fecha a mano, o quitarla
- * del todo si no sabes cuándo fue (botón "Quitar"). Sirve para volcar
- * historial antiguo sin que quede "hoy" cuando en realidad lo viste hace
- * tiempo, o sin fecha si ni siquiera te acuerdas.
+ * Muestra «Visto: 22 jul 2026» y deja corregir la fecha con el selector del
+ * sistema, o quitarla del todo si no te acuerdas de cuándo fue. Sirve para
+ * volcar historial antiguo sin que quede como si lo hubieras visto hoy.
  */
-export default function WatchedDate({
+export function WatchedDate({
   timestamp,
   onChange,
   label = 'Visto',
@@ -26,54 +27,41 @@ export default function WatchedDate({
   onChange: (ts: number | undefined) => void
   label?: string
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(timestamp ? toDateInput(timestamp) : '')
+  const [picking, setPicking] = useState(false)
 
-  const startEditing = () => {
-    setDraft(timestamp ? toDateInput(timestamp) : '')
-    setEditing(true)
-  }
-
-  const save = () => {
-    onChange(draft ? new Date(draft + 'T12:00').getTime() : undefined)
-    setEditing(false)
-  }
-
-  const clear = () => {
-    onChange(undefined)
-    setEditing(false)
-  }
-
-  if (editing) {
-    return (
-      <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-        <input
-          type="date"
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          style={{ width: 'auto', padding: '2px 6px', fontSize: '0.75rem' }}
-        />
-        <button className="btn btn-sm" onClick={save}>
-          OK
-        </button>
-        {timestamp && (
-          <button className="btn btn-sm" onClick={clear}>
-            Quitar
-          </button>
-        )}
-      </span>
-    )
+  const onPicked = (event: DateTimePickerEvent, date?: Date) => {
+    // En Android el diálogo se cierra solo; hay que quitarlo del árbol o no
+    // se puede volver a abrir.
+    if (Platform.OS !== 'ios') setPicking(false)
+    if (event.type === 'dismissed' || !date) return
+    // Mediodía: evita que un cambio de zona horaria mueva la fecha un día.
+    date.setHours(12, 0, 0, 0)
+    onChange(date.getTime())
   }
 
   return (
-    <button
-      className="poster-sub"
-      onClick={startEditing}
-      style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
-      title="Cambiar o quitar esta fecha"
-    >
-      {timestamp ? `${label}: ${fmtDate(timestamp)}` : `${label} sin fecha`} ✏️
-    </button>
+    <View style={styles.wrap}>
+      <Pressable onPress={() => setPicking(true)} hitSlop={6} accessibilityRole="button">
+        <Txt variant="small" tone="muted">
+          {timestamp ? `${label}: ${fmt(timestamp)}` : `${label} sin fecha`} ✎
+        </Txt>
+      </Pressable>
+      {timestamp !== undefined && (
+        <Button title="Quitar" small kind="ghost" onPress={() => onChange(undefined)} />
+      )}
+      {picking && (
+        <DateTimePicker
+          mode="date"
+          display="default"
+          value={timestamp ? new Date(timestamp) : new Date()}
+          maximumDate={new Date()}
+          onChange={onPicked}
+        />
+      )}
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+})

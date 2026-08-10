@@ -1,5 +1,10 @@
 // Modelo de datos de Ludok Time.
-// Todo vive en local (IndexedDB). Pensado para crecer a más tipos de contenido.
+//
+// El formato de las copias (`BackupFile`) viene heredado de la versión web, que
+// es de donde se migraron los datos, y `SCHEMA_VERSION` sigue valiendo 2 por eso
+// mismo. Se pueden AÑADIR campos opcionales sin problema — las copias antiguas
+// siguen entrando —, pero cambiar o quitar los que ya existen dejaría fuera
+// cualquier copia guardada antes, que es justo lo que no puede pasar aquí.
 
 export type MediaType = 'series' | 'movie' | 'book' | 'youtube' | 'custom'
 
@@ -31,6 +36,12 @@ export interface Item {
   status: Status
   /** valoración 0–10, 0 = sin valorar. */
   rating: number
+  /**
+   * Si al marcar un episodio suelto hay que ofrecer marcar también los
+   * anteriores. `false` = el usuario eligió no volver a preguntar en esta serie.
+   * Ausente = preguntar (el comportamiento por defecto).
+   */
+  askMarkPrevious?: boolean
   addedAt: number
   startedAt?: number
   completedAt?: number
@@ -57,6 +68,27 @@ export interface Settings {
   googleBooksApiKey?: string
   theme: 'dark' | 'light' | 'system'
   lastBackup: number
+  /** Cuándo se pasó la bienvenida. Ausente = aún no se ha visto. */
+  onboardedAt?: number
+
+  /* --- Copia automática a un Nextcloud propio ------------------------------ */
+  /** Base del servidor, p. ej. https://cloud.example.com */
+  nextcloudUrl?: string
+  nextcloudUser?: string
+  /**
+   * Contraseña de aplicación de Nextcloud.
+   *
+   * NO se incluye en las copias exportadas a propósito: una copia se comparte y
+   * se mueve de sitio, y esta contraseña da permiso de ESCRITURA sobre tus
+   * ficheros. Al restaurar en otro móvil hay que volver a escribirla.
+   */
+  nextcloudPassword?: string
+  /** Carpeta destino dentro de tus ficheros. */
+  nextcloudFolder?: string
+  /** Si se sube sola al abrir la app estando en WiFi. */
+  autoBackup?: boolean
+  /** Última subida automática correcta. */
+  lastAutoBackupAt?: number
   schemaVersion: number
 }
 

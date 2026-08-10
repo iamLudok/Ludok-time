@@ -1,31 +1,54 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# dependencias
+node_modules/
 
-node_modules
-dist
-dist-ssr
-*.local
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
 
-# Copias de seguridad de la app: contienen tu API key de TMDB. Nunca subir al repo.
+# proyecto nativo: lo regenera `expo prebuild`, no se versiona
+/android
+/ios
+.kotlin/
+*.orig.*
+
+# APK compilados
+*.apk
+
+# Firma del APK. Guárdala junto a las copias de seguridad: si se pierde, no se
+# puede instalar encima y hay que desinstalar, lo que BORRA los datos de la app.
+*.jks
+*.p8
+*.p12
+*.key
+*.keystore
+*.mobileprovision
+keystore.properties
+
+# Copias de seguridad: llevan dentro tu API key de TMDB. Nunca subir al repo.
 ludok-time-backup-*.json
 
-# Editor directories and files
+# logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.metro-health-check*
+
+# typescript
+*.tsbuildinfo
+
+# entorno local
+.env*.local
+
+# editores
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
 
-LudokTime.apk
 AGENTS.md
 CLAUDE.md

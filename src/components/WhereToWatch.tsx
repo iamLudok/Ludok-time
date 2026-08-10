@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
+import { View, StyleSheet, Pressable, Linking } from 'react-native'
+import { Image } from 'expo-image'
 import { getWatchProviders, type WatchProviders } from '../lib/tmdb'
 import { providerSearchUrl, baseProviderName } from '../lib/streamingLinks'
+import { usePalette } from '../ui/ThemeProvider'
+import { Txt } from '../ui/Text'
+import { radius, space } from '../ui/theme'
 
 /**
- * Dónde ver una serie/película (Netflix, HBO, Prime…) para España. Consulta
- * TMDB en vivo cada vez (datos de JustWatch, cambian con el tiempo, no se
- * guardan). Si falla o no hay datos, no muestra nada: es información
- * secundaria, no debe romper la ficha.
+ * Dónde ver una serie/película en España (datos de JustWatch vía TMDB). Consulta
+ * en vivo y no se guarda: la disponibilidad cambia. Si falla o no hay datos, no
+ * muestra nada — es información secundaria y no debe romper la ficha.
  */
-export default function WhereToWatch({
+export function WhereToWatch({
   tmdbId,
   kind,
   title,
@@ -17,6 +21,7 @@ export default function WhereToWatch({
   kind: 'movie' | 'tv'
   title: string
 }) {
+  const palette = usePalette()
   const [data, setData] = useState<WatchProviders | null>(null)
 
   useEffect(() => {
@@ -32,57 +37,64 @@ export default function WhereToWatch({
   if (!data || data.providers.length === 0) return null
 
   // TMDB lista variantes de la misma plataforma como proveedores distintos
-  // (p. ej. "Netflix" y "Netflix Standard with Ads", o alquiler y compra
-  // repitiendo la misma plataforma): quitamos duplicados por nombre base.
+  // ("Netflix" y "Netflix Standard with Ads"), y alquiler y compra repiten
+  // plataforma: se quitan duplicados por nombre base.
   const dedupe = (list: WatchProviders['providers']) => [
     ...new Map(list.map((p) => [baseProviderName(p.name), p])).values(),
   ]
   const flatrate = dedupe(data.providers.filter((p) => p.type === 'flatrate'))
-  const otherUnique = dedupe(data.providers.filter((p) => p.type !== 'flatrate'))
+  const other = dedupe(data.providers.filter((p) => p.type !== 'flatrate'))
 
-  const Row = ({ label, list }: { label: string; list: typeof data.providers }) => (
-    <div style={{ marginBottom: 8 }}>
-      <div className="poster-sub" style={{ marginBottom: 4 }}>
+  const Row = ({ label, list }: { label: string; list: WatchProviders['providers'] }) => (
+    <View style={styles.row}>
+      <Txt variant="label" tone="faint">
         {label}
-      </div>
-      <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+      </Txt>
+      <View style={styles.logos}>
         {list.map((p) => {
-          const searchUrl = providerSearchUrl(p.name, title)
-          const img = (
-            <img
-              src={p.logoUrl}
-              alt={p.name}
-              title={searchUrl ? `Buscar en ${p.name}` : p.name}
-              style={{ width: 36, height: 36, borderRadius: 8 }}
-            />
-          )
-          return searchUrl ? (
-            <a key={p.name} href={searchUrl} target="_blank" rel="noreferrer">
-              {img}
-            </a>
-          ) : (
-            <span key={p.name}>{img}</span>
+          const url = providerSearchUrl(p.name, title)
+          return (
+            <Pressable
+              key={p.name}
+              disabled={!url}
+              onPress={() => url && Linking.openURL(url)}
+              accessibilityRole="link"
+              accessibilityLabel={url ? `Buscar ${title} en ${p.name}` : p.name}
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Image
+                source={{ uri: p.logoUrl }}
+                style={styles.logo}
+                contentFit="cover"
+                cachePolicy="disk"
+              />
+            </Pressable>
           )
         })}
-      </div>
-    </div>
+      </View>
+    </View>
   )
 
   return (
-    <section className="card" style={{ marginBottom: 14 }}>
-      <h3 style={{ marginTop: 0 }}>📍 Dónde verla</h3>
+    <View style={[styles.card, { borderColor: palette.line }]}>
+      <Txt variant="section">Dónde verla</Txt>
       {flatrate.length > 0 && <Row label="Con suscripción" list={flatrate} />}
-      {otherUnique.length > 0 && <Row label="Alquiler / compra" list={otherUnique} />}
-      <p className="muted" style={{ fontSize: '0.72rem', marginTop: 6, marginBottom: 0 }}>
-        Disponibilidad en España · toca un logo para buscarlo ahí ·{' '}
-        {data.link ? (
-          <a href={data.link} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
-            datos de JustWatch
-          </a>
-        ) : (
-          'datos de JustWatch'
-        )}
-      </p>
-    </section>
+      {other.length > 0 && <Row label="Alquiler / compra" list={other} />}
+      <Txt variant="small" tone="faint">
+        España · toca un logo para buscarlo ahí · datos de JustWatch
+      </Txt>
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    gap: space.md,
+  },
+  row: { gap: space.sm },
+  logos: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  logo: { width: 38, height: 38, borderRadius: radius.md },
+})
