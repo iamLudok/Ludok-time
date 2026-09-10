@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite'
 import { eq } from 'drizzle-orm'
 import { db } from '../lib/db'
 import { items as itemsTable } from '../lib/schema'
-import { getSimilar, posterUrl, type TmdbSimilar } from '../lib/tmdb'
+import { posterUrl, type TmdbSimilar } from '../lib/tmdb'
 import { addMovieFromTmdb, addSeriesFromTmdb } from '../lib/library'
 import { Poster } from '../ui/Poster'
 import { Txt } from '../ui/Text'
@@ -22,30 +22,19 @@ const CARD_WIDTH = 92
  * series occidentales solo por compartir género. Se excluye lo que ya tienes.
  */
 export function SimilarTitles({
-  tmdbId,
+  results,
   kind,
   originalLanguage,
 }: {
-  tmdbId: number
+  /** Los trae la pantalla, que ya pide todo junto en una sola petición. */
+  results: TmdbSimilar[] | null | undefined
   kind: 'movie' | 'tv'
   originalLanguage?: string
 }) {
   const router = useRouter()
   const palette = usePalette()
   const toast = useToast()
-  const [results, setResults] = useState<TmdbSimilar[] | null>(null)
   const [addingId, setAddingId] = useState<number | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    setResults(null)
-    getSimilar(tmdbId, kind)
-      .then((r) => alive && setResults(r))
-      .catch(() => alive && setResults([]))
-    return () => {
-      alive = false
-    }
-  }, [tmdbId, kind])
 
   // Aquí `source` sí es una columna indexable, así que se filtra en la consulta
   // (en Dexie había que traerse todo y filtrar en JavaScript).

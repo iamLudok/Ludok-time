@@ -6,6 +6,7 @@ import { rowToItem, rowToEpisode, itemToRow, episodeToRow } from './rows'
 import { chunk, excludedSet, patchToColumns } from './sqlHelpers'
 import { getMovie, getSeries, getSeasonEpisodes, posterUrl } from './tmdb'
 import type { Item, Episode, MediaType, Status } from '../types'
+import type { TmdbSeason } from './tmdb'
 
 /**
  * Misma lógica de negocio que la versión web: lo único que cambia es cómo se
@@ -47,6 +48,46 @@ async function mapWithConcurrency<T, R>(
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
   // Los índices fallidos quedan huecos: los descartamos sin perder el orden de los que sí llegaron.
   return { results: results.filter((r) => r !== undefined), failed }
+}
+
+/** Hoy en formato 'YYYY-MM-DD', que es como TMDB da las fechas de emisión. */
+function today(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/**
+ * Si un episodio ya se ha emitido.
+ *
+ * TMDB devuelve las temporadas COMPLETAS, incluidos los capítulos que aún no han
+ * salido: vienen con título y fecha futura, pero sin fotograma. Guardarlos
+ * ensuciaba la lista con episodios que no existen todavía, hacía que el progreso
+ * dijera 24/25 para siempre y —lo peor— desactivaba el aviso de «próximo
+ * episodio», que solo aparece cuando ese capítulo NO está ya en tu lista.
+ *
+ * Sin fecha se da por emitido: normalmente son series antiguas a las que TMDB no
+ * les puso fecha, y esconderlas sería peor. Se comparan como texto para no
+ * meterse en zonas horarias — el formato 'YYYY-MM-DD' ya ordena bien.
+ */
+function hasAired(airDate: string | undefined, hoy = today()): boolean {
+  if (!airDate) return true
+  return airDate <= hoy
+}
+
+/**
+ * Qué temporadas están anunciadas de verdad.
+ *
+ * En cuanto una serie se renueva, TMDB a veces añade ya la temporada siguiente
+ * a la lista — a veces con episodios "plantilla" (Episodio 1, Episodio 2…),
+ * sin foto y sin fecha. La señal fiable no es la fecha de cada episodio (de eso
+ * ya se encarga `hasAired`), sino la fecha DE LA TEMPORADA: si TMDB no la
+ * tiene, es que ni siquiera hay fecha de estreno decidida, y no hay nada real
+ * que traer todavía — da igual que la temporada venga con 0 episodios (como
+ * pasa a veces) o con diez de relleno (como con "Nadie quiere esto" T3).
+ */
+export function announcedSeasons(seasons: TmdbSeason[]): TmdbSeason[] {
+  return seasons.filter((s) => s.airDate !== undefined)
 }
 
 async function getItem(itemId: string): Promise<Item | undefined> {
@@ -166,13 +207,18 @@ export async function addSeriesFromTmdb(
 
   // Como máximo 4 temporadas a la vez: series muy longevas (cientos de
   // episodios) podían disparar decenas de peticiones simultáneas y chocar
-  // con el límite de tasa de TMDB, perdiendo episodios sin avisar.
+  // con el límite de tasa de TMDB, perdiendo episodios sin avisar. Las
+  // temporadas sin anunciar ni se piden: no tiene sentido preguntar por los
+  // episodios de una temporada que TMDB mismo dice que aún no existe.
   const { results: seasons, failed: failedSeasons } = await mapWithConcurrency(
-    s.seasons,
+    announcedSeasons(s.seasons),
     4,
     (season) => getSeasonEpisodes(tmdbId, season.seasonNumber),
   )
-  const episodes: Episode[] = seasons.flat().map((e) => ({
+  const episodes: Episode[] = seasons
+    .flat()
+    .filter((e) => hasAired(e.airDate))
+    .map((e) => ({
     id: newId(),
     itemId,
     season: e.season,
@@ -207,12 +253,13 @@ export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResu
   const have = new Set(existing.map((e) => `${e.season}-${e.episode}`))
 
   const { results: seasons, failed: failedSeasons } = await mapWithConcurrency(
-    s.seasons,
+    announcedSeasons(s.seasons),
     4,
     (season) => getSeasonEpisodes(tmdbId, season.seasonNumber),
   )
   const nuevos: Episode[] = seasons
     .flat()
+    .filter((e) => hasAired(e.airDate))
     .filter((e) => !have.has(`${e.season}-${e.episode}`))
     .map((e) => ({
       id: newId(),
@@ -261,6 +308,57 @@ export async function backfillEpisodeStills(itemId: string): Promise<number> {
 
   await upsertEpisodes(updates.map(({ e, still }) => ({ ...e, still })))
   return updates.length
+}
+
+/**
+ * Quita los episodios que aún no se han emitido y que se guardaron antes de
+ * dejar de hacerlo. Solo toca los que están SIN VER: si alguno estuviera
+ * marcado, se respeta — será que la fecha de TMDB está mal, y la marca del
+ * usuario manda sobre eso.
+ *
+ * Devuelve cuántos ha quitado. Recalcula el estado de la serie después, porque
+ * al desaparecer episodios pendientes una serie puede pasar a estar completa.
+ */
+export async function dropUnairedEpisodes(itemId: string): Promise<number> {
+  const eps = await episodesOf(itemId)
+  const hoy = today()
+  const sobran = eps.filter((e) => !e.watched && !hasAired(e.airDate, hoy))
+  if (!sobran.length) return 0
+
+  for (const part of chunk(sobran.map((e) => e.id))) {
+    await getDb().delete(episodesTable).where(inArray(episodesTable.id, part))
+  }
+  await recomputeSeriesStatus(itemId)
+  return sobran.length
+}
+
+/**
+ * Limpieza para lo que ya se guardó ANTES de que `addSeriesFromTmdb` y
+ * `syncSeriesEpisodes` dejaran de traer temporadas sin anunciar (ver
+ * `announcedSeasons`). `dropUnairedEpisodes` no pillaba este caso: sus
+ * episodios "plantilla" no tienen fecha, y sin fecha se daba por emitido — la
+ * misma pinta que un episodio real de una serie antigua sin ese dato.
+ *
+ * Aquí la comprobación es distinta y necesita preguntar a TMDB: se mira la
+ * lista de temporadas actual y se quita lo que tengas guardado de cualquier
+ * temporada que ya no esté anunciada. Solo toca lo que está SIN VER.
+ */
+export async function dropUnannouncedSeasons(itemId: string): Promise<number> {
+  const item = await getItem(itemId)
+  if (!item || item.type !== 'series' || item.source !== 'tmdb' || !item.sourceId) return 0
+
+  const s = await getSeries(Number(item.sourceId))
+  const announced = new Set(announcedSeasons(s.seasons).map((se) => se.seasonNumber))
+
+  const eps = await episodesOf(itemId)
+  const sobran = eps.filter((e) => !e.watched && !announced.has(e.season))
+  if (!sobran.length) return 0
+
+  for (const part of chunk(sobran.map((e) => e.id))) {
+    await getDb().delete(episodesTable).where(inArray(episodesTable.id, part))
+  }
+  await recomputeSeriesStatus(itemId)
+  return sobran.length
 }
 
 export function epLabel(ep: Episode): string {
@@ -388,8 +486,8 @@ async function recomputeSeriesStatus(itemId: string): Promise<void> {
 /* --- Estado y valoración --------------------------------------------------- */
 
 export function statusLabel(status: Status, type?: MediaType): string {
-  // Los libros se leen, no se ven: cambiamos el vocabulario.
-  if (type === 'book') {
+  // Los libros y el manga se leen, no se ven: cambiamos el vocabulario.
+  if (type === 'book' || type === 'manga') {
     const books: Record<Status, string> = {
       plan: 'Pendiente',
       watching: 'Leyendo',
@@ -523,103 +621,105 @@ export function bookPercent(item: Item): number {
   return Math.min(100, Math.round((item.currentPage / item.totalPages) * 100))
 }
 
-/* --- Vídeos de YouTube ----------------------------------------------------- */
-// Nota: los vídeos NO generan entradas en el diario. Al importar historial
-// pueden ser miles y ahogarían el resto. Tienen su propia sección.
+/* --- Manga ----------------------------------------------------------------- */
 
-export interface VideoInput {
-  videoId: string
-  title: string
-  channel?: string
-  watchedAt?: number
-}
-
-/** Añade un vídeo de YouTube. Devuelve el id local (o el existente si ya estaba). */
-export async function addVideo(video: VideoInput): Promise<string> {
-  const existing = await findBySource('youtube', 'youtube', video.videoId)
+/** Añade un manga desde MangaDex. Devuelve el id local. */
+export async function addManga(
+  manga: {
+    key: string
+    title: string
+    author?: string
+    year?: number
+    cover?: string
+    description?: string
+    lastChapter?: number
+  },
+  readUrl?: string,
+  status: Status = 'plan',
+): Promise<string> {
+  const existing = await findBySource('manga', 'mangadex', manga.key)
   if (existing) return existing.id
 
-  const watchedAt = video.watchedAt ?? Date.now()
   const item: Item = {
     id: newId(),
-    type: 'youtube',
-    source: 'youtube',
-    sourceId: video.videoId,
-    title: video.title,
-    author: video.channel,
-    poster: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`,
-    url: `https://www.youtube.com/watch?v=${video.videoId}`,
-    status: 'completed',
+    type: 'manga',
+    source: 'mangadex',
+    sourceId: manga.key,
+    title: manga.title,
+    author: manga.author,
+    poster: manga.cover,
+    overview: manga.description,
+    year: manga.year,
+    totalChapters: manga.lastChapter,
+    currentChapter: 0,
+    readUrl,
+    status,
     rating: 0,
     addedAt: Date.now(),
-    startedAt: watchedAt,
-    completedAt: watchedAt,
   }
   await getDb().insert(itemsTable).values(itemToRow(item))
   return item.id
 }
 
-/** Añade un vídeo escrito a mano, sin enlace. */
-export async function addManualVideo(title: string): Promise<string> {
+/** Añade un manga a mano, para lo que MangaDex no tenga. */
+export async function addManualManga(
+  data: { title: string; author?: string; chapters?: number; readUrl?: string },
+  status: Status = 'plan',
+): Promise<string> {
   const item: Item = {
     id: newId(),
-    type: 'youtube',
+    type: 'manga',
     source: 'manual',
-    title,
-    status: 'completed',
+    title: data.title,
+    author: data.author,
+    totalChapters: data.chapters,
+    currentChapter: 0,
+    readUrl: data.readUrl,
+    status,
     rating: 0,
     addedAt: Date.now(),
-    completedAt: Date.now(),
   }
   await getDb().insert(itemsTable).values(itemToRow(item))
   return item.id
 }
 
-export interface ImportVideosResult {
-  added: number
-  skipped: number
+/**
+ * Actualiza por qué capítulo vas y ajusta el estado.
+ *
+ * A diferencia de los libros, un manga en curso NO se da por terminado al
+ * llegar al último capítulo publicado: sigue saliendo. Solo se marca como
+ * completado si sabemos el total y lo has alcanzado, que es la misma regla,
+ * pero aquí `totalChapters` se actualiza cuando MangaDex publica más.
+ */
+export async function setMangaProgress(itemId: string, chapter: number): Promise<void> {
+  const item = await getItem(itemId)
+  if (!item || item.type !== 'manga') return
+
+  const total = item.totalChapters ?? 0
+  const current = Math.max(0, total ? Math.min(chapter, total) : chapter)
+  const patch: Partial<Item> = { currentChapter: current }
+
+  if (current === 0) {
+    patch.status = 'plan'
+  } else if (total && current >= total) {
+    patch.status = 'completed'
+    patch.completedAt = Date.now()
+    if (!item.startedAt) patch.startedAt = Date.now()
+  } else {
+    patch.status = 'watching' // "leyendo"
+    if (!item.startedAt) patch.startedAt = Date.now()
+  }
+
+  await updateItem(itemId, patch)
 }
 
-/** Importa muchos vídeos de golpe (historial de Takeout), evitando duplicados. */
-export async function importVideos(entries: VideoInput[]): Promise<ImportVideosResult> {
-  const existing = await getDb()
-    .select({ sourceId: itemsTable.sourceId })
-    .from(itemsTable)
-    .where(eq(itemsTable.type, 'youtube'))
-  const known = new Set(existing.map((i) => i.sourceId).filter(Boolean) as string[])
+/** Porcentaje leído de un manga (0 si no sabemos cuántos capítulos hay). */
+export function mangaPercent(item: Item): number {
+  if (!item.totalChapters || !item.currentChapter) return 0
+  return Math.min(100, Math.round((item.currentChapter / item.totalChapters) * 100))
+}
 
-  const nuevos: Item[] = []
-  let skipped = 0
-  for (const v of entries) {
-    if (known.has(v.videoId)) {
-      skipped++
-      continue
-    }
-    known.add(v.videoId)
-    const watchedAt = v.watchedAt ?? Date.now()
-    nuevos.push({
-      id: newId(),
-      type: 'youtube',
-      source: 'youtube',
-      sourceId: v.videoId,
-      title: v.title,
-      author: v.channel,
-      poster: `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`,
-      url: `https://www.youtube.com/watch?v=${v.videoId}`,
-      status: 'completed',
-      rating: 0,
-      addedAt: Date.now(),
-      startedAt: watchedAt,
-      completedAt: watchedAt,
-    })
-  }
-
-  if (nuevos.length) {
-    await getDb().transaction(async (tx) => {
-      for (const part of chunk(nuevos)) {
-        await tx.insert(itemsTable).values(part.map(itemToRow))
-      }
-    })
-  }
-  return { added: nuevos.length, skipped }
+/** Guarda (o corrige) el enlace de lectura. */
+export async function setReadUrl(itemId: string, readUrl: string | undefined): Promise<void> {
+  await updateItem(itemId, { readUrl })
 }

@@ -33,13 +33,26 @@ import {
   addManualBook,
   setBookProgress,
   bookPercent,
-  addManualVideo,
-  importVideos,
+  addManga,
+  addManualManga,
+  setMangaProgress,
+  mangaPercent,
+  setReadUrl,
   statusLabel,
   countPreviousUnwatched,
+  dropUnairedEpisodes,
+  announcedSeasons,
   stopAskingMarkPrevious,
   epLabel,
 } from '../src/lib/library'
+import type { TmdbSeason } from '../src/lib/tmdb'
+import {
+  listFavourites,
+  isFavourite,
+  addFavourite,
+  removeFavourite,
+  toggleFavourite,
+} from '../src/lib/people'
 import type { Item, Episode } from '../src/types'
 
 let failures = 0
@@ -232,40 +245,18 @@ async function main() {
   check('otra fuente es otro libro', id3 !== id1)
   eq_('ahora dos filas', (await getDb().select().from(itemsTable)).length, 2)
 
-  console.log('\n=== 12. Importar vídeos sin duplicar ===')
-  await useFreshDb()
-  const entries = Array.from({ length: 50 }, (_, i) => ({
-    videoId: `vid${i}`,
-    title: `Vídeo ${i}`,
-    channel: 'Canal',
-    watchedAt: 1700000000000 + i,
-  }))
-  let r = await importVideos(entries)
-  eq_('50 añadidos', r.added, 50)
-  eq_('0 saltados', r.skipped, 0)
-  r = await importVideos(entries)
-  eq_('la segunda vez no añade nada', r.added, 0)
-  eq_('y salta los 50', r.skipped, 50)
-  // Mezcla de nuevos y repetidos:
-  r = await importVideos([...entries.slice(0, 10), { videoId: 'nuevo', title: 'Nuevo' }])
-  eq_('solo entra el nuevo', r.added, 1)
-  eq_('y salta los 10 repetidos', r.skipped, 10)
-  eq_('total 51 vídeos', (await getDb().select().from(itemsTable)).length, 51)
-  // Respeta la fecha real de visualización:
-  const vid0 = (await getDb().select().from(itemsTable).where(eq(itemsTable.sourceId, 'vid0')))[0]
-  eq_('conserva la fecha en que lo viste', vid0?.completedAt, 1700000000000)
-
-  console.log('\n=== 13. Borrar arrastra los episodios ===')
+  console.log('\n=== 12. Borrar arrastra los episodios ===')
   await useFreshDb()
   itemId = await seedSeries(5)
-  await addManualVideo('Un vídeo suelto')
+  const otroId = await addManualBook({ title: 'Un libro aparte' })
   eq_('5 episodios antes', (await getDb().select().from(episodesTable)).length, 5)
   await deleteItem(itemId)
   eq_('la serie desaparece', (await readItem(itemId)) ?? null, null)
   eq_('y sus episodios también', (await getDb().select().from(episodesTable)).length, 0)
-  eq_('el vídeo sigue ahí', (await getDb().select().from(itemsTable)).length, 1)
+  eq_('el otro título sigue ahí', (await getDb().select().from(itemsTable)).length, 1)
+  check('y es el que debe ser', !!(await readItem(otroId)))
 
-  console.log('\n=== 14. Ofrecer marcar los episodios anteriores ===')
+  console.log('\n=== 13. Ofrecer marcar los episodios anteriores ===')
   await useFreshDb()
   itemId = await seedSeries(10)
   let eps10 = await orderedEpisodes(itemId)
@@ -283,7 +274,7 @@ async function main() {
   eps10 = await orderedEpisodes(itemId)
   eq_('tras decir que sí, 6 vistos', eps10.filter((e) => e.watched).length, 6)
 
-  console.log('\n=== 15. «No preguntar en esta serie» se recuerda ===')
+  console.log('\n=== 14. «No preguntar en esta serie» se recuerda ===')
   check('por defecto se pregunta', (await readItem(itemId))?.askMarkPrevious !== false)
   await stopAskingMarkPrevious(itemId)
   eq_('deja de preguntarse', (await readItem(itemId))?.askMarkPrevious, false)
@@ -291,8 +282,173 @@ async function main() {
   const otra = await addManualBook({ title: 'Otro título' })
   check('otro título no queda afectado', (await readItem(otra))?.askMarkPrevious !== false)
 
-  console.log('\n=== 16. Textos (libros se leen, no se ven) ===')
+  console.log('\n=== 15. Episodios sin emitir ===')
+  // TMDB devuelve las temporadas completas, con los capítulos futuros dentro.
+  // Guardarlos ensuciaba la lista y dejaba el progreso clavado en 24/25.
+  await useFreshDb()
+  itemId = await seedSeries(3)
+  const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const manana = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  const lejos = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+  await getDb()
+    .update(episodesTable)
+    .set({ airDate: ayer })
+    .where(eq(episodesTable.id, 'ep-s1e1'))
+  await getDb()
+    .update(episodesTable)
+    .set({ airDate: manana })
+    .where(eq(episodesTable.id, 'ep-s1e2'))
+  await getDb()
+    .update(episodesTable)
+    .set({ airDate: lejos })
+    .where(eq(episodesTable.id, 'ep-s1e3'))
+
+  eq_('quitados los 2 que no han salido', await dropUnairedEpisodes(itemId), 2)
+  let quedan = await orderedEpisodes(itemId)
+  eq_('queda solo el emitido', quedan.length, 1)
+  eq_('y es el correcto', quedan[0]?.id, 'ep-s1e1')
+
+  // Un episodio marcado como visto NO se toca aunque su fecha diga que no ha
+  // salido: la marca del usuario manda sobre una fecha equivocada de TMDB.
+  await useFreshDb()
+  itemId = await seedSeries(2)
+  await getDb().update(episodesTable).set({ airDate: manana }).where(eq(episodesTable.id, 'ep-s1e1'))
+  await getDb().update(episodesTable).set({ airDate: manana }).where(eq(episodesTable.id, 'ep-s1e2'))
+  await setEpisodeWatched('ep-s1e1', true)
+  eq_('solo quita el que no está visto', await dropUnairedEpisodes(itemId), 1)
+  quedan = await orderedEpisodes(itemId)
+  eq_('el visto sobrevive', quedan.length, 1)
+  eq_('y sigue marcado', quedan[0]?.watched, true)
+  // Al quedarse sin pendientes, la serie pasa a completada.
+  eq_('la serie queda completada', (await readItem(itemId))?.status, 'completed')
+
+  // Sin fecha se da por emitido: series antiguas sin fecha en TMDB.
+  await useFreshDb()
+  itemId = await seedSeries(2)
+  eq_('los que no tienen fecha no se tocan', await dropUnairedEpisodes(itemId), 0)
+  eq_('siguen los 2', (await orderedEpisodes(itemId)).length, 2)
+
+  console.log('\n=== 16. Manga: progreso por capítulos ===')
+  await useFreshDb()
+  const mangaId = await addManualManga({ title: 'Berserk', author: 'Miura', chapters: 364 })
+  eq_('empieza pendiente', (await readItem(mangaId))?.status, 'plan')
+  eq_('y por el capítulo 0', (await readItem(mangaId))?.currentChapter, 0)
+
+  await setMangaProgress(mangaId, 145)
+  eq_('a medias → leyendo', (await readItem(mangaId))?.status, 'watching')
+  eq_('capítulo guardado', (await readItem(mangaId))?.currentChapter, 145)
+  eq_('40%', mangaPercent((await readItem(mangaId)) as Item), 40)
+
+  await setMangaProgress(mangaId, 999) // más que el total
+  eq_('no pasa del total', (await readItem(mangaId))?.currentChapter, 364)
+  eq_('y queda terminado', (await readItem(mangaId))?.status, 'completed')
+  eq_('100%', mangaPercent((await readItem(mangaId)) as Item), 100)
+
+  await setMangaProgress(mangaId, 0)
+  eq_('volver a 0 lo deja pendiente', (await readItem(mangaId))?.status, 'plan')
+
+  // Los capítulos NO se guardan en el campo de páginas de los libros: son
+  // conceptos distintos y mezclarlos haría que el modelo mintiera.
+  eq_('no toca currentPage', (await readItem(mangaId))?.currentPage, null)
+
+  console.log('\n=== 17. Manga sin saber cuántos capítulos tiene ===')
+  await useFreshDb()
+  const abierto = await addManualManga({ title: 'Algo en curso' })
+  await setMangaProgress(abierto, 50)
+  eq_('avanza igual', (await readItem(abierto))?.currentChapter, 50)
+  eq_('se queda leyendo, no terminado', (await readItem(abierto))?.status, 'watching')
+  eq_('sin total, 0%', mangaPercent((await readItem(abierto)) as Item), 0)
+
+  console.log('\n=== 18. Enlace de lectura ===')
+  eq_('arranca sin enlace', (await readItem(abierto))?.readUrl, null)
+  await setReadUrl(abierto, 'https://inmanga.com/ver/manga/Algo/abc')
+  eq_('se guarda', (await readItem(abierto))?.readUrl, 'https://inmanga.com/ver/manga/Algo/abc')
+  await setReadUrl(abierto, undefined)
+  eq_('y se puede quitar', (await readItem(abierto))?.readUrl, null)
+
+  console.log('\n=== 19. No se duplica un manga de MangaDex ===')
+  await useFreshDb()
+  const md = { key: 'md-1', title: 'Berserk', author: 'Miura', lastChapter: 364 }
+  const a1 = await addManga(md)
+  const a2 = await addManga(md)
+  eq_('el mismo manga devuelve el mismo id', a1, a2)
+  eq_('solo una fila', (await getDb().select().from(itemsTable)).length, 1)
+
+  console.log('\n=== 20. Actores favoritos ===')
+  await useFreshDb()
+  const gillian = { tmdbId: 12214, name: 'Gillian Anderson', photo: 'https://x/g.jpg' }
+  const emma = { tmdbId: 2201315, name: 'Emma Mackey' }
+
+  check('al principio no hay ninguno', (await listFavourites()).length === 0)
+  check('y no es favorito', !(await isFavourite(gillian.tmdbId)))
+
+  await addFavourite(gillian)
+  check('tras marcarlo, sí lo es', await isFavourite(gillian.tmdbId))
+  eq_('y hay uno', (await listFavourites()).length, 1)
+
+  // El mismo actor dos veces no se duplica: el índice va por su id de TMDB.
+  const primera = await addFavourite(gillian)
+  const segunda = await addFavourite(gillian)
+  eq_('marcarlo dos veces devuelve el mismo', primera, segunda)
+  eq_('y sigue habiendo uno', (await listFavourites()).length, 1)
+
+  await addFavourite(emma)
+  eq_('dos favoritos', (await listFavourites()).length, 2)
+  // El último marcado va primero.
+  eq_('el último marcado, arriba', (await listFavourites())[0]?.name, 'Emma Mackey')
+  // Sin foto se guarda vacío, no como texto vacío.
+  eq_('sin foto queda a null', (await listFavourites())[0]?.photo, undefined)
+
+  eq_('desmarcar devuelve false', await toggleFavourite(gillian), false)
+  check('y deja de serlo', !(await isFavourite(gillian.tmdbId)))
+  eq_('queda el otro', (await listFavourites()).length, 1)
+  eq_('marcar de nuevo devuelve true', await toggleFavourite(gillian), true)
+  eq_('y vuelven a ser dos', (await listFavourites()).length, 2)
+
+  await removeFavourite(emma.tmdbId)
+  eq_('quitar uno deja el otro', (await listFavourites()).length, 1)
+  check('quitar uno que no está no rompe', ((await removeFavourite(999999)), true))
+
+  console.log('\n=== 21. Temporadas anunciadas de verdad ===')
+  // Bug real: "Nadie quiere esto" muestra una T3 en TMDB con 10 episodios
+  // "plantilla" (Episodio 1, Episodio 2…), sin foto y sin fecha — la temporada
+  // se renovó pero no hay nada grabado todavía. La señal fiable es la fecha DE
+  // LA TEMPORADA, no la de cada episodio.
+  const temporadaSeason = (n: number, airDate?: string): TmdbSeason => ({
+    seasonNumber: n,
+    episodeCount: 10,
+    name: `Temporada ${n}`,
+    airDate,
+  })
+  const nadieQuiereEsto = [
+    temporadaSeason(1, '2024-09-26'),
+    temporadaSeason(2, '2025-10-23'),
+    temporadaSeason(3, undefined), // la "plantilla": TMDB no le ha puesto fecha
+  ]
+  const anunciadas = announcedSeasons(nadieQuiereEsto)
+  eq_('de las 3 temporadas, solo 2 están anunciadas', anunciadas.length, 2)
+  check('la 1 y la 2 pasan', anunciadas.some((s) => s.seasonNumber === 1) && anunciadas.some((s) => s.seasonNumber === 2))
+  check('la 3 (sin fecha) se queda fuera', !anunciadas.some((s) => s.seasonNumber === 3))
+
+  // Wednesday T3: mismo caso, pero con 0 episodios en vez de 10 de relleno —
+  // el filtro tiene que dar igual, porque mira la fecha, no cuántos episodios trae.
+  const wednesday = [
+    temporadaSeason(1, '2022-11-23'),
+    temporadaSeason(2, '2025-08-06'),
+    { seasonNumber: 3, episodeCount: 0, name: 'Temporada 3', airDate: undefined },
+  ]
+  eq_('da igual que la plantilla traiga 0 episodios', announcedSeasons(wednesday).length, 2)
+
+  // The Bear T5: fecha futura pero YA decidida — eso no es una plantilla, es
+  // una temporada real con estreno programado. Cuenta como anunciada; que sus
+  // episodios individuales aún no hayan salido ya lo filtra `hasAired` aparte.
+  const theBear = [temporadaSeason(4, '2025-06-25'), temporadaSeason(5, '2026-06-25')]
+  eq_('una fecha futura pero real SÍ cuenta como anunciada', announcedSeasons(theBear).length, 2)
+
+  console.log('\n=== 22. Textos (libros y manga se leen, no se ven) ===')
   eq_('libro leyendo', statusLabel('watching', 'book'), 'Leyendo')
+  eq_('manga leyendo', statusLabel('watching', 'manga'), 'Leyendo')
+  eq_('manga leído', statusLabel('completed', 'manga'), 'Leído')
   eq_('libro leído', statusLabel('completed', 'book'), 'Leído')
   eq_('serie viendo', statusLabel('watching', 'series'), 'Viendo')
   eq_('serie completada', statusLabel('completed'), 'Completado')

@@ -3,7 +3,7 @@ import { ScrollView, View, StyleSheet, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { useItem } from '../../src/hooks/useLibrary'
 import { setStatus, statusLabel, updateItem } from '../../src/lib/library'
-import { getMovie } from '../../src/lib/tmdb'
+import { getMovieFull, type TmdbMovieFull } from '../../src/lib/tmdb'
 import { DetailHead } from '../../src/ui/DetailHead'
 import { Txt } from '../../src/ui/Text'
 import { Button } from '../../src/ui/Button'
@@ -15,6 +15,7 @@ import { DetailControls } from '../../src/components/DetailControls'
 import { WatchedDate } from '../../src/components/WatchedDate'
 import { WhereToWatch } from '../../src/components/WhereToWatch'
 import { SimilarTitles } from '../../src/components/SimilarTitles'
+import { CastRow } from '../../src/components/CastRow'
 
 export default function MovieDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -23,14 +24,14 @@ export default function MovieDetail() {
   const item = useItem(id)
 
   const tmdbId = item?.source === 'tmdb' && item.sourceId ? Number(item.sourceId) : undefined
-  const [originalLanguage, setOriginalLanguage] = useState<string | undefined>()
+  const [tmdb, setTmdb] = useState<TmdbMovieFull | null | undefined>(undefined)
 
   useEffect(() => {
     if (!tmdbId) return
     let alive = true
-    getMovie(tmdbId)
-      .then((m) => alive && setOriginalLanguage(m.originalLanguage))
-      .catch(() => {})
+    getMovieFull(tmdbId)
+      .then((m) => alive && setTmdb(m))
+      .catch(() => alive && setTmdb(null))
     return () => {
       alive = false
     }
@@ -85,9 +86,15 @@ export default function MovieDetail() {
         </Txt>
       ) : null}
 
-      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="movie" title={item.title} />}
+      {tmdbId && <WhereToWatch data={tmdb?.providers} title={item.title} />}
+
+      <CastRow cast={tmdb?.cast} />
       {tmdbId && (
-        <SimilarTitles tmdbId={tmdbId} kind="movie" originalLanguage={originalLanguage} />
+        <SimilarTitles
+          results={tmdb?.similar}
+          kind="movie"
+          originalLanguage={tmdb?.movie.originalLanguage}
+        />
       )}
 
       <DetailControls item={item} />

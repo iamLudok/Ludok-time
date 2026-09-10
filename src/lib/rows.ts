@@ -5,11 +5,21 @@
 // de uno a otro explícitamente es lo que mantiene los ficheros de copia con la
 // misma forma exacta que los que genera la web.
 import { SCHEMA_VERSION } from './version'
-import type { items, episodes, settings, ItemRow, EpisodeRow, SettingsRow } from './schema'
-import type { Item, Episode, Settings } from '../types'
+import type {
+  items,
+  episodes,
+  people,
+  settings,
+  ItemRow,
+  EpisodeRow,
+  PersonRow,
+  SettingsRow,
+} from './schema'
+import type { Item, Episode, Person, Settings } from '../types'
 
 type ItemInsert = typeof items.$inferInsert
 type EpisodeInsert = typeof episodes.$inferInsert
+type PersonInsert = typeof people.$inferInsert
 type SettingsInsert = typeof settings.$inferInsert
 
 /** null → undefined */
@@ -29,9 +39,11 @@ export function rowToItem(r: ItemRow): Item {
     year: u(r.year),
     runtime: u(r.runtime),
     author: u(r.author),
-    url: u(r.url),
     totalPages: u(r.totalPages),
     currentPage: u(r.currentPage),
+    currentChapter: u(r.currentChapter),
+    totalChapters: u(r.totalChapters),
+    readUrl: u(r.readUrl),
     status: r.status,
     rating: r.rating,
     askMarkPrevious: u(r.askMarkPrevious),
@@ -53,9 +65,11 @@ export function itemToRow(i: Item): ItemInsert {
     year: n(i.year),
     runtime: n(i.runtime),
     author: n(i.author),
-    url: n(i.url),
     totalPages: n(i.totalPages),
     currentPage: n(i.currentPage),
+    currentChapter: n(i.currentChapter),
+    totalChapters: n(i.totalChapters),
+    readUrl: n(i.readUrl),
     status: i.status,
     rating: i.rating ?? 0,
     askMarkPrevious: n(i.askMarkPrevious),
@@ -92,6 +106,26 @@ export function episodeToRow(e: Episode): EpisodeInsert {
     still: n(e.still),
     watched: !!e.watched,
     watchedAt: n(e.watchedAt),
+  }
+}
+
+export function rowToPerson(r: PersonRow): Person {
+  return {
+    id: r.id,
+    tmdbId: r.tmdbId,
+    name: r.name,
+    photo: u(r.photo),
+    addedAt: r.addedAt,
+  }
+}
+
+export function personToRow(p: Person): PersonInsert {
+  return {
+    id: p.id,
+    tmdbId: p.tmdbId,
+    name: p.name,
+    photo: n(p.photo),
+    addedAt: p.addedAt,
   }
 }
 

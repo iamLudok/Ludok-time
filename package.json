@@ -39,10 +39,11 @@
     "verify:data": "tsx verify/data.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p verify",
     "verify:library": "tsx verify/library.ts",
-    "verify": "npm run verify:data && npm run verify:library && npm run verify:migration",
+    "verify": "npm run verify:data && npm run verify:library && npm run verify:migration && npm run verify:upcoming",
     "verify:real": "tsx verify/real.ts",
     "build:apk": "bash scripts/build-apk.sh",
-    "verify:migration": "tsx verify/migration.ts"
+    "verify:migration": "tsx verify/migration.ts",
+    "verify:upcoming": "tsx verify/upcoming.ts"
   },
   "private": true
 }

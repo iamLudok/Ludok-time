@@ -9,7 +9,7 @@ import { radius, space } from '../../src/ui/theme'
 import { useSettings } from '../../src/hooks/useSettings'
 import { updateSettings } from '../../src/lib/settings'
 import { shareBackup, pickJsonFile, importBackup, daysSinceBackup } from '../../src/lib/backup'
-import { useLibraryItems, useAllEpisodes, useVideos } from '../../src/hooks/useLibrary'
+import { useLibraryItems, useAllEpisodes } from '../../src/hooks/useLibrary'
 import { NextcloudSettings } from '../../src/components/NextcloudSettings'
 
 const THEMES = [
@@ -22,7 +22,6 @@ export default function SettingsScreen() {
   const settings = useSettings()
   const palette = usePalette()
   const { data: items } = useLibraryItems()
-  const { data: videos } = useVideos()
   const episodes = useAllEpisodes()
 
   const [tmdbKey, setTmdbKey] = useState('')
@@ -81,7 +80,10 @@ export default function SettingsScreen() {
     setBusy(true)
     try {
       const res = await importBackup(raw, mode)
-      Alert.alert('Importado', `${res.items} títulos y ${res.episodes} episodios.`)
+      const extra = res.discardedVideos
+        ? `\n\nSe descartaron ${res.discardedVideos} vídeos de YouTube: esa parte ya no existe en la app.`
+        : ''
+      Alert.alert('Importado', `${res.items} títulos y ${res.episodes} episodios.${extra}`)
     } catch (e) {
       Alert.alert('Error al importar', e instanceof Error ? e.message : 'Error desconocido')
     } finally {
@@ -104,7 +106,6 @@ export default function SettingsScreen() {
             <Row label="Títulos" value={String(items.length)} />
             <Row label="Episodios" value={String(episodes.length)} />
             <Row label="Vistos" value={String(episodes.filter((e) => e.watched).length)} />
-            <Row label="Vídeos" value={String(videos.length)} />
             <Row label="Última copia" value={lastBackupText} />
           </View>
           <Button title="Exportar copia" kind="primary" onPress={doExport} disabled={busy} />

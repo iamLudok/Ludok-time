@@ -5,7 +5,15 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../../../src/lib/db'
 import { items as itemsTable } from '../../../src/lib/schema'
-import { getSeries, getMovie, posterUrl, type TmdbSeries, type TmdbMovie } from '../../../src/lib/tmdb'
+import {
+  getSeriesFull,
+  getMovieFull,
+  posterUrl,
+  type TmdbSeries,
+  type TmdbMovie,
+  type WatchProviders,
+  type TmdbSimilar,
+} from '../../../src/lib/tmdb'
 import { addSeriesFromTmdb, addMovieFromTmdb } from '../../../src/lib/library'
 import { DetailHead } from '../../../src/ui/DetailHead'
 import { Txt } from '../../../src/ui/Text'
@@ -31,13 +39,24 @@ export default function Preview() {
   const isSeries = kind === 'tv'
   const id = Number(tmdbId)
   const [data, setData] = useState<TmdbSeries | TmdbMovie | null | undefined>(undefined)
+  const [providers, setProviders] = useState<WatchProviders | null>(null)
+  const [similar, setSimilar] = useState<TmdbSimilar[] | null>(null)
   const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     if (Number.isNaN(id)) return
     setData(undefined)
-    const fetcher = isSeries ? getSeries(id) : getMovie(id)
-    fetcher.then(setData).catch(() => setData(null))
+    // Una sola petición: datos, dónde verla y similares llegan juntos.
+    const fetcher = isSeries
+      ? getSeriesFull(id).then((r) => ({ base: r.series, ...r }))
+      : getMovieFull(id).then((r) => ({ base: r.movie, ...r }))
+    fetcher
+      .then((r) => {
+        setData(r.base)
+        setProviders(r.providers)
+        setSimilar(r.similar)
+      })
+      .catch(() => setData(null))
   }, [id, isSeries])
 
   const { data: mine } = useLiveQuery(
@@ -152,9 +171,9 @@ export default function Preview() {
         </View>
       )}
 
-      <WhereToWatch tmdbId={id} kind={isSeries ? 'tv' : 'movie'} title={data.title} />
+      <WhereToWatch data={providers} title={data.title} />
       <SimilarTitles
-        tmdbId={id}
+        results={similar}
         kind={isSeries ? 'tv' : 'movie'}
         originalLanguage={data.originalLanguage}
       />

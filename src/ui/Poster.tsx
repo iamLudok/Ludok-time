@@ -9,7 +9,7 @@ const FALLBACK: Record<MediaType, string> = {
   series: 'Serie',
   movie: 'Película',
   book: 'Libro',
-  youtube: 'Vídeo',
+  manga: 'Manga',
   custom: '—',
 }
 

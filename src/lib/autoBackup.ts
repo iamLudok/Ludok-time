@@ -2,6 +2,9 @@ import * as Network from 'expo-network'
 import { exportAll } from './backup'
 import { getSettings, updateSettings } from './settings'
 import { configFrom, uploadFile } from './nextcloud'
+import { isDue, backupFilename } from './backupPolicy'
+
+export { STALE_DAYS, autoBackupIsStale } from './backupPolicy'
 
 /**
  * Copia automática al Nextcloud propio.
@@ -14,20 +17,11 @@ import { configFrom, uploadFile } from './nextcloud'
  * Solo por WiFi, que es lo que se pidió: en datos móviles ni se intenta.
  */
 
-/** Tiempo mínimo entre subidas automáticas. */
-const EVERY_MS = 12 * 60 * 60 * 1000
 
 export type AutoBackupResult =
   | { status: 'ok'; filename: string }
   | { status: 'skipped'; reason: string }
   | { status: 'error'; message: string }
-
-function filenameFor(date = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  // Un fichero por día: se reemplaza dentro del mismo día y queda un histórico
-  // de días, que es justo lo que sirve si un día metes la pata con los datos.
-  return `ludok-time-backup-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.json`
-}
 
 /** Sube la copia ahora mismo, sin mirar WiFi ni cuánto hace de la última. */
 export async function backupNow(): Promise<AutoBackupResult> {
@@ -37,7 +31,7 @@ export async function backupNow(): Promise<AutoBackupResult> {
 
   try {
     const data = await exportAll()
-    const filename = filenameFor()
+    const filename = backupFilename()
     await uploadFile(config, filename, JSON.stringify(data, null, 2))
     const now = Date.now()
     // `lastBackup` también, para que el aviso de «llevas X días sin copia» se
@@ -58,8 +52,9 @@ export async function maybeAutoBackup(): Promise<AutoBackupResult> {
   if (!settings.autoBackup) return { status: 'skipped', reason: 'Desactivada.' }
   if (!configFrom(settings)) return { status: 'skipped', reason: 'Falta configurar el servidor.' }
 
-  const since = Date.now() - (settings.lastAutoBackupAt ?? 0)
-  if (since < EVERY_MS) return { status: 'skipped', reason: 'Ya se hizo hace poco.' }
+  if (!isDue(settings.lastAutoBackupAt)) {
+    return { status: 'skipped', reason: 'Ya se hizo hace poco.' }
+  }
 
   const net = await Network.getNetworkStateAsync()
   if (net.type !== Network.NetworkStateType.WIFI) {
@@ -71,3 +66,4 @@ export async function maybeAutoBackup(): Promise<AutoBackupResult> {
 
   return backupNow()
 }
+

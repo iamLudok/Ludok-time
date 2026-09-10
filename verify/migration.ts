@@ -177,7 +177,74 @@ async function main() {
   eq('la copia automática arranca apagada', st2.rows[0]?.autoBackup, null)
   eq('y la API key sigue intacta tras dos migraciones', String(st2.rows[0]?.tmdbApiKey), 'CLAVE')
 
-  console.log('\n=== 5. Migrar dos veces no rompe nada ===')
+  console.log('\n=== 5. La migración quita los episodios sin emitir ===')
+  // Es la que arregla lo que ya está guardado en el móvil: TMDB devolvía las
+  // temporadas completas y se colaban capítulos que aún no habían salido.
+  const conFuturos = createClient({ url: `file:${tmpFile('futuros')}` })
+  await conFuturos.executeMultiple(V1_SQL)
+  await conFuturos.execute('PRAGMA user_version = 1')
+  const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const manana = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  const eps: [string, string | null, number][] = [
+    ['emitido', ayer, 0],
+    ['sin-fecha', null, 0],
+    ['futuro', manana, 0],
+    ['futuro-pero-visto', manana, 1],
+  ]
+  for (const [id, fecha, visto] of eps) {
+    await conFuturos.execute({
+      sql: `INSERT INTO episodes (id,itemId,season,episode,airDate,watched) VALUES (?,?,?,?,?,?)`,
+      args: [id, 's1', 1, 1, fecha, visto],
+    })
+  }
+  await migrate(conFuturos)
+
+  const tras = await conFuturos.execute('SELECT id FROM episodes ORDER BY id')
+  const ids = tras.rows.map((r) => String(r.id))
+  check('se queda el emitido', ids.includes('emitido'))
+  check('se queda el que no tiene fecha', ids.includes('sin-fecha'))
+  check('se va el que no ha salido', !ids.includes('futuro'))
+  check('PERO se queda el marcado como visto', ids.includes('futuro-pero-visto'))
+  eq('quedan 3 de 4', ids.length, 3)
+
+  console.log('\n=== 6. Columnas de manga tras migrar ===')
+  const itemCols = await columns(old, 'items')
+  for (const c of ['currentChapter', 'totalChapters', 'readUrl']) {
+    check(`items tiene ${c}`, itemCols.includes(c))
+  }
+  // Y lo de siempre: lo que ya había sigue intacto tras cinco migraciones.
+  const item2 = await old.execute('SELECT * FROM items WHERE id = ?1', ['s1'] as never)
+  eq('el título aguanta 5 migraciones', String(item2.rows[0]?.title), 'Kuroko no Basket')
+  eq('y la nota también', Number(item2.rows[0]?.rating), 10)
+
+  console.log('\n=== 7. La tabla de actores se crea al migrar ===')
+  const tablas = await conFuturos.execute("SELECT name FROM sqlite_master WHERE type='table'")
+  check(
+    'existe la tabla people',
+    tablas.rows.map((r) => String(r.name)).includes('people'),
+  )
+  // Y su índice único, que es lo que impide marcar dos veces al mismo actor.
+  const idx = await conFuturos.execute("SELECT name FROM sqlite_master WHERE type='index'")
+  check(
+    'con su índice único por tmdbId',
+    idx.rows.map((r) => String(r.name)).includes('people_tmdbId_idx'),
+  )
+  await conFuturos.execute({
+    sql: 'INSERT INTO people (id,tmdbId,name,addedAt) VALUES (?,?,?,?)',
+    args: ['p1', 12214, 'Gillian Anderson', 1],
+  })
+  let duplicado = false
+  try {
+    await conFuturos.execute({
+      sql: 'INSERT INTO people (id,tmdbId,name,addedAt) VALUES (?,?,?,?)',
+      args: ['p2', 12214, 'Gillian otra vez', 2],
+    })
+  } catch {
+    duplicado = true
+  }
+  check('el mismo actor dos veces lo rechaza la base', duplicado)
+
+  console.log('\n=== 8. Migrar dos veces no rompe nada ===')
   await migrate(old)
   const again = await old.execute('SELECT * FROM items')
   eq('sigue habiendo un título', again.rows.length, 1)

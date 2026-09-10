@@ -6,9 +6,12 @@ import {
   setEpisodeWatched,
   updateItem,
   backfillEpisodeStills,
+  dropUnairedEpisodes,
+  dropUnannouncedSeasons,
   syncSeriesEpisodes,
 } from '../../src/lib/library'
-import { getSeries, type TmdbSeries } from '../../src/lib/tmdb'
+import { getSeriesFull, type TmdbSeriesFull } from '../../src/lib/tmdb'
+import type { Episode } from '../../src/types'
 import { DetailHead } from '../../src/ui/DetailHead'
 import { Txt } from '../../src/ui/Text'
 import { Button } from '../../src/ui/Button'
@@ -21,7 +24,7 @@ import { DetailControls } from '../../src/components/DetailControls'
 import { WatchedDate } from '../../src/components/WatchedDate'
 import { WhereToWatch } from '../../src/components/WhereToWatch'
 import { SimilarTitles } from '../../src/components/SimilarTitles'
-import type { Episode } from '../../src/types'
+import { CastRow } from '../../src/components/CastRow'
 
 export default function SeriesDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -31,9 +34,10 @@ export default function SeriesDetail() {
   const episodes = useEpisodes(id)
 
   const tmdbId = item?.source === 'tmdb' && item.sourceId ? Number(item.sourceId) : undefined
-  // Un solo fetch a TMDB, compartido por el aviso de próximo episodio y por
-  // «También te puede gustar» (en la web cada uno pedía lo suyo).
-  const [tmdb, setTmdb] = useState<TmdbSeries | null | undefined>(undefined)
+  // UNA sola petición para toda la ficha: datos, dónde verla y similares.
+  // `append_to_response` de TMDB deja pedirlo junto; antes eran tres peticiones
+  // compitiendo entre sí cada vez que abrías una serie.
+  const [tmdb, setTmdb] = useState<TmdbSeriesFull | null | undefined>(undefined)
 
   useEffect(() => {
     if (!tmdbId) {
@@ -42,7 +46,7 @@ export default function SeriesDetail() {
     }
     let alive = true
     setTmdb(undefined)
-    getSeries(tmdbId)
+    getSeriesFull(tmdbId)
       .then((s) => alive && setTmdb(s))
       .catch(() => alive && setTmdb(null))
     return () => {
@@ -50,10 +54,16 @@ export default function SeriesDetail() {
     }
   }, [tmdbId])
 
-  // Series añadidas antes de que existieran las fotos de episodio no las tienen
-  // guardadas: se rellenan una vez al entrar, sin tocar lo visto.
+  // Al entrar se hacen tres arreglos silenciosos, sin tocar nada de lo marcado:
+  // rellenar las fotos de las series añadidas antes de que existieran, quitar
+  // episodios que aún no se han emitido, y quitar los de una temporada que
+  // TMDB había anunciado como "plantilla" (sin fecha, a veces sin nombre ni
+  // foto) y que al final no ha llegado a anunciarse de verdad.
   useEffect(() => {
-    if (id && tmdbId) backfillEpisodeStills(id).catch(() => {})
+    if (!id || !tmdbId) return
+    backfillEpisodeStills(id).catch(() => {})
+    dropUnairedEpisodes(id).catch(() => {})
+    dropUnannouncedSeasons(id).catch(() => {})
   }, [id, tmdbId])
 
   if (item === undefined) {
@@ -78,7 +88,17 @@ export default function SeriesDetail() {
         poster={item.poster}
         type="series"
         title={item.title}
-        meta={`${item.year ?? ''} · ${watched}/${episodes.length} episodios`}
+        meta={[
+          item.year,
+          `${watched}/${episodes.length} episodios`,
+          tmdb?.series.genres.slice(0, 2).join(', ') || null,
+          tmdb?.series.networks[0] || null,
+          tmdb?.series.voteAverage
+            ? `TMDB ${tmdb.series.voteAverage.toFixed(1)}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       >
         {next && (
           <Button
@@ -101,7 +121,7 @@ export default function SeriesDetail() {
         )}
       </DetailHead>
 
-      <NextEpisode itemId={item.id} localEpisodes={episodes} series={tmdb} />
+      <MissingEpisodes itemId={item.id} localEpisodes={episodes} tmdb={tmdb} />
 
       {item.overview ? (
         <Txt variant="small" tone="muted">
@@ -109,7 +129,9 @@ export default function SeriesDetail() {
         </Txt>
       ) : null}
 
-      {tmdbId && <WhereToWatch tmdbId={tmdbId} kind="tv" title={item.title} />}
+      {tmdbId && <WhereToWatch data={tmdb?.providers} title={item.title} />}
+
+      <CastRow cast={tmdb?.cast} />
 
       <DetailControls item={item} />
 
@@ -129,38 +151,41 @@ export default function SeriesDetail() {
       {/* Al final del todo: es lo menos importante de la ficha y no debe
           estorbar para llegar a los episodios, que es a lo que se entra. */}
       {tmdbId && (
-        <SimilarTitles tmdbId={tmdbId} kind="tv" originalLanguage={tmdb?.originalLanguage} />
+        <SimilarTitles
+          results={tmdb?.similar}
+          kind="tv"
+          originalLanguage={tmdb?.series.originalLanguage}
+        />
       )}
     </ScrollView>
   )
 }
 
 /**
- * Aviso del próximo episodio. Muestra SIEMPRE algún estado en series en emisión
- * — incluido «sin fecha anunciada» — para que quede claro que la app lo ha
- * comprobado y no que algo esté roto.
+ * Avisa de que TMDB tiene episodios ya emitidos que tú no tienes guardados.
+ *
+ * Se compara con `last_episode_to_air`, que es el último que ha salido DE
+ * VERDAD. Antes esto solo se descubría si te fijabas en que el contador no
+ * cuadraba, o al entrar en «Próximos» cuando la fecha ya había pasado.
  */
-function NextEpisode({
+function MissingEpisodes({
   itemId,
   localEpisodes,
-  series,
+  tmdb,
 }: {
   itemId: string
   localEpisodes: Episode[]
-  series: TmdbSeries | null | undefined
+  tmdb: TmdbSeriesFull | null | undefined
 }) {
   const palette = usePalette()
   const toast = useToast()
   const [syncing, setSyncing] = useState(false)
 
-  if (!series) return null
-  if (series.inProduction === false) return null
+  const last = tmdb?.series.lastEpisode
+  if (!last) return null
 
-  const next = series.nextEpisode
-  const haveLocally =
-    !!next && localEpisodes.some((e) => e.season === next.season && e.episode === next.episode)
-  // Ya lo tenemos: lo gestiona el botón «Ver siguiente».
-  if (haveLocally) return null
+  const have = localEpisodes.some((e) => e.season === last.season && e.episode === last.episode)
+  if (have) return null
 
   const sync = async () => {
     setSyncing(true)
@@ -169,7 +194,7 @@ function NextEpisode({
       toast(
         added > 0
           ? `${added} episodio${added === 1 ? '' : 's'} nuevo${added === 1 ? '' : 's'}`
-          : 'Aún no aparece en TMDB',
+          : 'No hay nada nuevo en TMDB',
       )
       if (failedSeasons > 0) {
         toast(`${failedSeasons} temporada${failedSeasons === 1 ? '' : 's'} sin comprobar`)
@@ -179,33 +204,12 @@ function NextEpisode({
     }
   }
 
-  if (!next?.airDate) {
-    return (
-      <View style={[styles.banner, { borderColor: palette.line }]}>
-        <Txt variant="small" tone="muted">
-          Sin fecha anunciada todavía para el próximo episodio.
-        </Txt>
-      </View>
-    )
-  }
-
-  const target = new Date(next.airDate + 'T00:00').getTime()
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const days = Math.round((target - today.getTime()) / 86_400_000)
-  const label = `S${next.season}E${next.episode}${next.title ? ' · ' + next.title : ''}`
-
   return (
     <View style={[styles.banner, { borderColor: palette.line }]}>
       <Txt variant="small" tone="muted" style={{ flex: 1 }}>
-        {days > 1 && `Próximo: ${label} · en ${days} días`}
-        {days === 1 && `Próximo: ${label} · mañana`}
-        {days === 0 && `Próximo: ${label} · ¡hoy!`}
-        {days < 0 && `${label} ya debería estar disponible`}
+        Ya ha salido S{last.season}E{last.episode} y no lo tienes en la lista.
       </Txt>
-      {days <= 0 && (
-        <Button title={syncing ? '…' : 'Actualizar'} small onPress={sync} disabled={syncing} />
-      )}
+      <Button title={syncing ? '…' : 'Traer'} small onPress={sync} disabled={syncing} />
     </View>
   )
 }

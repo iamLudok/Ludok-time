@@ -9,7 +9,7 @@ import { radius } from '../../src/ui/theme'
  * con CSS en vez de emojis: en «Sala oscura» la interfaz es monocroma, y un
  * emoji a color rompería justo eso.
  */
-type Shape = 'library' | 'add' | 'video' | 'stats' | 'settings'
+type Shape = 'library' | 'add' | 'upcoming' | 'stats' | 'settings'
 
 function Icon({ shape, color }: { shape: Shape; color: ColorValue }) {
   if (shape === 'library') {
@@ -29,8 +29,12 @@ function Icon({ shape, color }: { shape: Shape; color: ColorValue }) {
       </View>
     )
   }
-  if (shape === 'video') {
-    return <View style={[styles.tri, { borderLeftColor: color }]} />
+  if (shape === 'upcoming') {
+    return (
+      <View style={[styles.cal, { borderColor: color }]}>
+        <View style={[styles.calBar, { backgroundColor: color }]} />
+      </View>
+    )
   }
   if (shape === 'stats') {
     return (
@@ -84,8 +88,11 @@ export default function TabsLayout() {
         options={{ title: 'Añadir', tabBarIcon: ({ color }) => <Icon shape="add" color={color} /> }}
       />
       <Tabs.Screen
-        name="videos"
-        options={{ title: 'Vídeos', tabBarIcon: ({ color }) => <Icon shape="video" color={color} /> }}
+        name="upcoming"
+        options={{
+          title: 'Próximos',
+          tabBarIcon: ({ color }) => <Icon shape="upcoming" color={color} />,
+        }}
       />
       <Tabs.Screen
         name="stats"
@@ -108,14 +115,7 @@ const styles = StyleSheet.create({
   box: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   plusH: { position: 'absolute', width: 16, height: 3, borderRadius: 1.5 },
   plusV: { position: 'absolute', width: 3, height: 16, borderRadius: 1.5 },
-  tri: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftWidth: 13,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-  },
   ring: { width: 17, height: 17, borderRadius: radius.pill, borderWidth: 3 },
+  cal: { width: 17, height: 17, borderWidth: 2, borderRadius: 3, justifyContent: 'flex-start' },
+  calBar: { height: 3, width: '100%' },
 })

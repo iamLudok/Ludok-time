@@ -3,7 +3,7 @@ import { Screen } from '../../src/ui/Screen'
 import { Txt } from '../../src/ui/Text'
 import { usePalette } from '../../src/ui/ThemeProvider'
 import { radius, space } from '../../src/ui/theme'
-import { useLibraryItems, useVideos, useAllEpisodes } from '../../src/hooks/useLibrary'
+import { useLibraryItems, useAllEpisodes } from '../../src/hooks/useLibrary'
 import type { Item } from '../../src/types'
 
 const DEFAULT_EPISODE_MIN = 40
@@ -20,12 +20,12 @@ function fmtDuration(minutes: number): string {
 
 export default function StatsScreen() {
   const { data: library } = useLibraryItems()
-  const { data: videos } = useVideos()
   const episodes = useAllEpisodes()
 
   const seriesItems = library.filter((i) => i.type === 'series')
   const movies = library.filter((i) => i.type === 'movie')
   const books = library.filter((i) => i.type === 'book')
+  const manga = library.filter((i) => i.type === 'manga')
 
   // --- Series: duración real de TMDB cuando la hay, media orientativa si no.
   const watchedEps = episodes.filter((e) => e.watched)
@@ -49,6 +49,7 @@ export default function StatsScreen() {
 
   // --- Libros
   const pagesRead = books.reduce((sum, b) => sum + (b.currentPage ?? 0), 0)
+  const chaptersRead = manga.reduce((sum, m) => sum + (m.currentChapter ?? 0), 0)
 
   return (
     <Screen title="Estadísticas" padded={false}>
@@ -95,7 +96,14 @@ export default function StatsScreen() {
           ]}
         />
 
-        <Section title="Vídeos" stats={[{ n: String(videos.length), l: 'Guardados' }]} />
+        <Section
+          title="Manga"
+          stats={[
+            { n: String(manga.length), l: 'En biblioteca' },
+            { n: String(manga.filter((i) => i.status === 'completed').length), l: 'Terminados' },
+            { n: String(chaptersRead), l: 'Capítulos leídos' },
+          ]}
+        />
       </ScrollView>
     </Screen>
   )

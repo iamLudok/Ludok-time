@@ -44,7 +44,10 @@ export function Welcome() {
       const raw = await pickJsonFile()
       if (!raw) return
       const res = await importBackup(raw, 'replace')
-      setImported(`${res.items} títulos y ${res.episodes} episodios`)
+      setImported(
+        `${res.items} títulos y ${res.episodes} episodios` +
+          (res.discardedVideos ? ` · ${res.discardedVideos} vídeos descartados` : ''),
+      )
     } catch (e) {
       setImported(e instanceof Error ? e.message : 'No se pudo importar')
     } finally {

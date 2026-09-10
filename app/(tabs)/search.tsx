@@ -18,19 +18,20 @@ import { useToast } from '../../src/ui/Toast'
 import { radius, space } from '../../src/ui/theme'
 import { useSettings, useSettingsQuery } from '../../src/hooks/useSettings'
 import { useDebounced } from '../../src/hooks/useDebounced'
-import { searchMulti, posterUrl, type TmdbSearchResult } from '../../src/lib/tmdb'
+import { searchMulti, discover, posterUrl, type TmdbSearchResult } from '../../src/lib/tmdb'
 import { searchBooks, type BookResult } from '../../src/lib/openlibrary'
 import { searchGoogleBooks } from '../../src/lib/googlebooks'
-import { videoIdFromUrl, thumbnailUrl, fetchVideoInfo } from '../../src/lib/youtube'
-import { addVideo, addManualVideo, addManualBook } from '../../src/lib/library'
+import { addManualBook, addManualManga } from '../../src/lib/library'
+import { searchManga, statusLabel as mangaStatus, type MangaResult } from '../../src/lib/mangadex'
+import { setMangaPreview } from '../../src/lib/mangaPreview'
 import { setBookPreview } from '../../src/lib/bookPreview'
 
-type Tab = 'screen' | 'books' | 'video'
+type Tab = 'screen' | 'books' | 'manga'
 
 const TABS: readonly ChipOption<Tab>[] = [
   { key: 'screen', label: 'Series y pelis' },
   { key: 'books', label: 'Libros' },
-  { key: 'video', label: 'YouTube' },
+  { key: 'manga', label: 'Manga' },
 ]
 
 export default function SearchScreen() {
@@ -42,7 +43,7 @@ export default function SearchScreen() {
       </View>
       {tab === 'screen' && <ScreenSearch />}
       {tab === 'books' && <BookSearch />}
-      {tab === 'video' && <VideoAdd />}
+      {tab === 'manga' && <MangaSearch />}
     </Screen>
   )
 }
@@ -107,6 +108,52 @@ function SearchField({
 
 /* --- Series y películas (TMDB) -------------------------------------------- */
 
+interface Category {
+  key: string
+  label: string
+  movieGenres?: number[]
+  tvGenres?: number[]
+}
+
+// Los géneros de película y de serie de TMDB son dos listas distintas que solo
+// coinciden a medias (p. ej. "Acción" no existe en series, que en su lugar
+// tiene "Action & Adventure"): cada categoría junta el/los id(s) de cada lado
+// que mejor encajan, y si un lado no tiene equivalente se deja sin pedir.
+const CATEGORIES: readonly Category[] = [
+  { key: 'accion', label: 'Acción y aventura', movieGenres: [28, 12], tvGenres: [10759] },
+  { key: 'animacion', label: 'Animación', movieGenres: [16], tvGenres: [16] },
+  { key: 'comedia', label: 'Comedia', movieGenres: [35], tvGenres: [35] },
+  { key: 'crimen', label: 'Crimen', movieGenres: [80], tvGenres: [80] },
+  { key: 'documental', label: 'Documental', movieGenres: [99], tvGenres: [99] },
+  { key: 'drama', label: 'Drama', movieGenres: [18], tvGenres: [18] },
+  { key: 'familia', label: 'Familia', movieGenres: [10751], tvGenres: [10751] },
+  { key: 'fantasia', label: 'Fantasía y ciencia ficción', movieGenres: [14, 878], tvGenres: [10765] },
+  { key: 'misterio', label: 'Misterio', movieGenres: [9648], tvGenres: [9648] },
+  { key: 'romance', label: 'Romance', movieGenres: [10749] },
+  { key: 'terror', label: 'Terror y suspense', movieGenres: [27, 53] },
+  { key: 'belica', label: 'Bélica e histórica', movieGenres: [10752, 36], tvGenres: [10768] },
+  { key: 'western', label: 'Western', movieGenres: [37], tvGenres: [37] },
+]
+
+type CategoryKey = (typeof CATEGORIES)[number]['key']
+
+const CATEGORY_CHIPS: readonly ChipOption<CategoryKey>[] = CATEGORIES.map((c) => ({
+  key: c.key,
+  label: c.label,
+}))
+
+/** Une los resultados de película y serie de una categoría alternando entre
+ * ambos, para no enseñar primero 20 películas y luego 20 series. */
+function interleave(a: TmdbSearchResult[], b: TmdbSearchResult[]): TmdbSearchResult[] {
+  const out: TmdbSearchResult[] = []
+  const max = Math.max(a.length, b.length)
+  for (let i = 0; i < max; i++) {
+    if (a[i]) out.push(a[i])
+    if (b[i]) out.push(b[i])
+  }
+  return out
+}
+
 function ScreenSearch() {
   const router = useRouter()
   const palette = usePalette()
@@ -116,6 +163,15 @@ function ScreenSearch() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const debounced = useDebounced(query)
+
+  const [category, setCategory] = useState<CategoryKey>(CATEGORIES[0].key)
+  const [catResults, setCatResults] = useState<TmdbSearchResult[]>([])
+  const [catLoading, setCatLoading] = useState(false)
+  const [catError, setCatError] = useState('')
+
+  // Sin texto siempre hay una categoría elegida (no existe «Todo»), así que
+  // se navega por géneros nada más entrar en vez de enseñar la pantalla vacía.
+  const browsing = !debounced.trim()
 
   useEffect(() => {
     const text = debounced.trim()
@@ -151,6 +207,40 @@ function ScreenSearch() {
     }
   }, [debounced])
 
+  useEffect(() => {
+    if (!browsing) {
+      setCatResults([])
+      setCatError('')
+      setCatLoading(false)
+      return
+    }
+    const cat = CATEGORIES.find((c) => c.key === category)
+    if (!cat) return
+
+    let alive = true
+    setCatLoading(true)
+    setCatError('')
+    Promise.all([
+      cat.movieGenres ? discover('movie', cat.movieGenres) : Promise.resolve([]),
+      cat.tvGenres ? discover('tv', cat.tvGenres) : Promise.resolve([]),
+    ])
+      .then(([movies, series]) => {
+        if (!alive) return
+        setCatResults(interleave(movies, series))
+      })
+      .catch((e: unknown) => {
+        if (!alive) return
+        setCatError(e instanceof Error ? e.message : 'Error al buscar')
+        setCatResults([])
+      })
+      .finally(() => {
+        if (alive) setCatLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [browsing, category])
+
   // Mientras no se sepa si hay API key, no se dice que falta.
   if (ready && !settings.tmdbApiKey) {
     return (
@@ -167,6 +257,10 @@ function ScreenSearch() {
     )
   }
 
+  const shown = browsing ? catResults : results
+  const shownLoading = browsing ? catLoading : loading
+  const shownError = browsing ? catError : error
+
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <SearchField
@@ -176,17 +270,30 @@ function ScreenSearch() {
         placeholder="Buscar serie o película…"
         loading={loading}
       />
-      {error ? (
+      {!debounced.trim() && (
+        <View style={styles.categoryRow}>
+          <Chips options={CATEGORY_CHIPS} value={category} onChange={setCategory} />
+        </View>
+      )}
+      {shownError ? (
         <Txt variant="small" tone="danger">
-          {error}
+          {shownError}
         </Txt>
       ) : null}
-      {!loading && !error && debounced.trim() && results.length === 0 ? (
+      {!shownLoading && !shownError && debounced.trim() && shown.length === 0 ? (
         <Txt variant="small" tone="muted">
           Nada encontrado.
         </Txt>
       ) : null}
-      {results.map((r) => (
+      {!shownLoading && !shownError && browsing && shown.length === 0 ? (
+        <Txt variant="small" tone="muted">
+          Nada encontrado en esta categoría.
+        </Txt>
+      ) : null}
+      {shownLoading && shown.length === 0 ? (
+        <ActivityIndicator color={palette.muted} style={styles.pad} />
+      ) : null}
+      {shown.map((r) => (
         <Pressable
           key={`${r.mediaType}-${r.id}`}
           onPress={() => router.push(`/preview/${r.mediaType}/${r.id}`)}
@@ -383,33 +490,59 @@ function BookSearch() {
   )
 }
 
-/* --- Vídeos de YouTube ----------------------------------------------------- */
+/* --- Manga (MangaDex + a mano) --------------------------------------------- */
 
-function VideoAdd() {
+function MangaSearch() {
   const router = useRouter()
   const palette = usePalette()
   const toast = useToast()
-  const [url, setUrl] = useState('')
-  const [manual, setManual] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<MangaResult[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [title, setTitle] = useState('')
+  const [author, setAuthor] = useState('')
+  const [chapters, setChapters] = useState('')
+  const debounced = useDebounced(query)
 
-  const videoId = videoIdFromUrl(url)
-
-  const addFromUrl = async () => {
-    if (!videoId) return
-    setBusy(true)
-    try {
-      const info = await fetchVideoInfo(videoId)
-      const title = info?.title ?? `Vídeo ${videoId}`
-      await addVideo({ videoId, title, channel: info?.channel })
-      toast(info ? `Añadido: ${title}` : 'Añadido (sin título: privado o borrado)')
-      setUrl('')
-      router.push('/videos')
-    } catch {
-      toast('No se pudo añadir el vídeo')
-    } finally {
-      setBusy(false)
+  useEffect(() => {
+    const text = debounced.trim()
+    if (!text) {
+      setResults([])
+      setError('')
+      setLoading(false)
+      return
     }
+    let alive = true
+    setLoading(true)
+    setError('')
+    searchManga(text)
+      .then((r) => alive && setResults(r))
+      .catch((e: unknown) => {
+        if (!alive) return
+        setError(e instanceof Error ? e.message : 'Error al buscar')
+        setResults([])
+      })
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [debounced])
+
+  const addManual = async () => {
+    if (!title.trim()) return
+    const id = await addManualManga({
+      title: title.trim(),
+      author: author.trim() || undefined,
+      chapters: chapters ? parseInt(chapters, 10) : undefined,
+    })
+    toast('Añadido')
+    setTitle('')
+    setAuthor('')
+    setChapters('')
+    router.push(`/manga/${id}`)
   }
 
   const field = [
@@ -419,75 +552,85 @@ function VideoAdd() {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={[styles.card, { borderColor: palette.line }]}>
-        <Txt variant="section">Pegar enlace</Txt>
-        <TextInput
-          value={url}
-          onChangeText={setUrl}
-          placeholder="https://www.youtube.com/watch?v=…"
-          placeholderTextColor={palette.faint}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={field}
-        />
-        {videoId && (
-          <View style={styles.row}>
-            <Poster uri={thumbnailUrl(videoId)} type="youtube" width={90} />
-            <Txt variant="small" tone="muted" style={{ flex: 1 }}>
-              Vídeo detectado. El título se busca solo al añadirlo.
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        onSubmit={() => {}}
+        placeholder="Buscar manga…"
+        loading={loading}
+      />
+      <Txt variant="small" tone="faint">
+        MangaDex · el enlace para leerlo se busca en inManga al añadirlo
+      </Txt>
+      {error ? (
+        <Txt variant="small" tone="danger">
+          {error}
+        </Txt>
+      ) : null}
+
+      {results.map((m) => (
+        <Pressable
+          key={m.key}
+          onPress={() => {
+            setMangaPreview(m)
+            router.push('/preview/manga')
+          }}
+          style={({ pressed }) => [
+            styles.result,
+            { borderColor: palette.line, opacity: pressed ? 0.65 : 1 },
+          ]}
+        >
+          <Poster uri={m.cover} type="manga" title={m.title} width={54} />
+          <View style={styles.resultMain}>
+            <Txt variant="section" numberOfLines={2}>
+              {m.title}
+            </Txt>
+            <Txt variant="data" tone="faint">
+              {[mangaStatus(m.status), m.year, m.lastChapter ? `${m.lastChapter} caps.` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </Txt>
+            <Txt variant="small" tone="muted" numberOfLines={1}>
+              {m.author ?? "Autor desconocido"}
             </Txt>
           </View>
-        )}
-        {url && !videoId ? (
-          <Txt variant="small" tone="muted">
-            No reconozco ese enlace de YouTube.
-          </Txt>
-        ) : null}
-        <Button
-          title="Añadir vídeo"
-          kind="primary"
-          onPress={addFromUrl}
-          disabled={!videoId || busy}
-        />
-      </View>
+        </Pressable>
+      ))}
 
       <View style={[styles.card, { borderColor: palette.line }]}>
-        <Txt variant="section">Apuntar a mano</Txt>
-        <Txt variant="small" tone="muted">
-          Sin enlace ni miniatura, solo el título.
-        </Txt>
+        <Txt variant="section">¿No aparece? Apúntalo a mano</Txt>
         <TextInput
-          value={manual}
-          onChangeText={setManual}
-          placeholder="Título del vídeo"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Título"
           placeholderTextColor={palette.faint}
           style={field}
         />
-        <Button
-          title="Apuntar"
-          onPress={async () => {
-            if (!manual.trim()) return
-            setBusy(true)
-            try {
-              await addManualVideo(manual.trim())
-              toast('Añadido')
-              setManual('')
-              router.push('/videos')
-            } finally {
-              setBusy(false)
-            }
-          }}
-          disabled={!manual.trim() || busy}
+        <TextInput
+          value={author}
+          onChangeText={setAuthor}
+          placeholder="Autor (opcional)"
+          placeholderTextColor={palette.faint}
+          style={field}
         />
+        <TextInput
+          value={chapters}
+          onChangeText={setChapters}
+          placeholder="Capítulos en total (opcional)"
+          placeholderTextColor={palette.faint}
+          keyboardType="number-pad"
+          style={field}
+        />
+        <Button title="Apuntar manga" kind="primary" onPress={addManual} disabled={!title.trim()} />
       </View>
-
-      {busy && <ActivityIndicator color={palette.muted} />}
     </ScrollView>
   )
 }
 
+
 const styles = StyleSheet.create({
   tabs: { paddingLeft: space.lg, paddingBottom: space.md },
+  categoryRow: { marginTop: -space.xs },
   content: { paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.md },
   pad: { padding: space.lg, gap: space.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

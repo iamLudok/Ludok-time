@@ -7,13 +7,20 @@
 // que es lo único que hace que la prueba valga para algo.
 import { eq } from 'drizzle-orm'
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core'
-import { items as itemsTable, episodes as episodesTable, settings as settingsTable } from './schema'
+import {
+  items as itemsTable,
+  episodes as episodesTable,
+  people as peopleTable,
+  settings as settingsTable,
+} from './schema'
 import {
   rowToItem,
   rowToEpisode,
+  rowToPerson,
   rowToSettings,
   itemToRow,
   episodeToRow,
+  personToRow,
   settingsToRow,
 } from './rows'
 import { chunk, excludedSet } from './sqlHelpers'
@@ -58,6 +65,7 @@ export async function writeSettings(database: LudokDb, next: Settings): Promise<
 export async function exportAll(database: LudokDb): Promise<BackupFile> {
   const itemRows = await database.select().from(itemsTable)
   const episodeRows = await database.select().from(episodesTable)
+  const peopleRows = await database.select().from(peopleTable)
   const appSettings = await readSettings(database)
 
   // La contraseña de Nextcloud NO se exporta. Una copia se comparte y se mueve
@@ -72,6 +80,7 @@ export async function exportAll(database: LudokDb): Promise<BackupFile> {
     exportedAt: Date.now(),
     items: itemRows.map(rowToItem),
     episodes: episodeRows.map(rowToEpisode),
+    people: peopleRows.map(rowToPerson),
     settings: safeSettings,
   }
 }
@@ -79,6 +88,10 @@ export async function exportAll(database: LudokDb): Promise<BackupFile> {
 export interface ImportResult {
   items: number
   episodes: number
+  /** Actores favoritos restaurados. */
+  people: number
+  /** Vídeos de YouTube descartados por venir de una copia anterior a quitarlos. */
+  discardedVideos: number
 }
 
 /**
@@ -106,13 +119,21 @@ export async function importBackup(
     )
   }
 
-  const incomingItems = parsed.items ?? []
+  // Los vídeos de YouTube se quitaron de la app. Una copia anterior puede
+  // traerlos: se descartan y se dice cuántos, en vez de meterlos en la base de
+  // datos como filas de un tipo que ya no existe y que nada sabría mostrar.
+  const all = parsed.items ?? []
+  const incomingItems = all.filter((i) => (i.type as string) !== 'youtube')
+  const discardedVideos = all.length - incomingItems.length
   const incomingEpisodes = parsed.episodes ?? []
+  // Ausente en copias anteriores a los favoritos: se trata como lista vacía.
+  const incomingPeople = parsed.people ?? []
 
   await database.transaction(async (tx: LudokDb) => {
     if (mode === 'replace') {
       await tx.delete(episodesTable)
       await tx.delete(itemsTable)
+      await tx.delete(peopleTable)
     }
     for (const part of chunk(incomingItems)) {
       await tx
@@ -125,6 +146,12 @@ export async function importBackup(
         .insert(episodesTable)
         .values(part.map(episodeToRow))
         .onConflictDoUpdate({ target: episodesTable.id, set: excludedSet(episodesTable) })
+    }
+    for (const part of chunk(incomingPeople)) {
+      await tx
+        .insert(peopleTable)
+        .values(part.map(personToRow))
+        .onConflictDoUpdate({ target: peopleTable.id, set: excludedSet(peopleTable) })
     }
   })
 
@@ -146,7 +173,12 @@ export async function importBackup(
     })
   }
 
-  return { items: incomingItems.length, episodes: incomingEpisodes.length }
+  return {
+    items: incomingItems.length,
+    episodes: incomingEpisodes.length,
+    people: incomingPeople.length,
+    discardedVideos,
+  }
 }
 
 /** Días transcurridos desde la última copia. Infinity si nunca se ha hecho. */

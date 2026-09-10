@@ -49,10 +49,7 @@ export async function shareBackup(): Promise<string> {
   return file.uri
 }
 
-/**
- * Abre el selector de ficheros y devuelve el contenido del JSON elegido. Lo usan
- * tanto importar una copia como importar el historial de YouTube de Takeout.
- */
+/** Abre el selector de ficheros y devuelve el contenido del JSON elegido. */
 export async function pickJsonFile(): Promise<string | null> {
   const res = await DocumentPicker.getDocumentAsync({
     type: ['application/json', 'text/plain', '*/*'],

@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
 import { View, StyleSheet, Pressable, Linking } from 'react-native'
 import { Image } from 'expo-image'
-import { getWatchProviders, type WatchProviders } from '../lib/tmdb'
+import type { WatchProviders } from '../lib/tmdb'
 import { providerSearchUrl, baseProviderName } from '../lib/streamingLinks'
 import { usePalette } from '../ui/ThemeProvider'
 import { Txt } from '../ui/Text'
@@ -13,26 +12,14 @@ import { radius, space } from '../ui/theme'
  * muestra nada — es información secundaria y no debe romper la ficha.
  */
 export function WhereToWatch({
-  tmdbId,
-  kind,
+  data,
   title,
 }: {
-  tmdbId: number
-  kind: 'movie' | 'tv'
+  /** Lo trae la pantalla, que ya pide todo junto en una sola petición. */
+  data: WatchProviders | null | undefined
   title: string
 }) {
   const palette = usePalette()
-  const [data, setData] = useState<WatchProviders | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    getWatchProviders(tmdbId, kind)
-      .then((d) => alive && setData(d))
-      .catch(() => alive && setData(null))
-    return () => {
-      alive = false
-    }
-  }, [tmdbId, kind])
 
   if (!data || data.providers.length === 0) return null
 

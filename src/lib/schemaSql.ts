@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS items (
   url TEXT,
   totalPages INTEGER,
   currentPage INTEGER,
+  currentChapter INTEGER,
+  totalChapters INTEGER,
+  readUrl TEXT,
   status TEXT NOT NULL,
   rating INTEGER NOT NULL DEFAULT 0,
   askMarkPrevious INTEGER,
@@ -56,7 +59,16 @@ CREATE TABLE IF NOT EXISTS settings (
   schemaVersion INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS people (
+  id TEXT PRIMARY KEY NOT NULL,
+  tmdbId INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  photo TEXT,
+  addedAt INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS episodes_itemId_idx ON episodes (itemId);
+CREATE UNIQUE INDEX IF NOT EXISTS people_tmdbId_idx ON people (tmdbId);
 CREATE INDEX IF NOT EXISTS items_type_idx ON items (type);
 CREATE INDEX IF NOT EXISTS items_status_idx ON items (status);
 `
@@ -87,6 +99,26 @@ export const MIGRATIONS: string[] = [
    ALTER TABLE settings ADD COLUMN nextcloudFolder TEXT;
    ALTER TABLE settings ADD COLUMN autoBackup INTEGER;
    ALTER TABLE settings ADD COLUMN lastAutoBackupAt INTEGER;`,
+  // v4 → v5: fuera los episodios que aún no se han emitido.
+  //
+  // Se guardaban porque TMDB devuelve las temporadas completas, con los
+  // capítulos futuros incluidos. Ensuciaban la lista, dejaban el progreso en
+  // 24/25 para siempre y desactivaban el aviso de «próximo episodio». Solo se
+  // borran los que están sin ver: si alguno está marcado, manda el usuario.
+  `DELETE FROM episodes WHERE watched = 0 AND airDate IS NOT NULL AND airDate > date('now');`,
+  // v5 → v6: manga como tipo propio, con capítulos y enlace de lectura.
+  `ALTER TABLE items ADD COLUMN currentChapter INTEGER;
+   ALTER TABLE items ADD COLUMN totalChapters INTEGER;
+   ALTER TABLE items ADD COLUMN readUrl TEXT;`,
+  // v6 → v7: actores favoritos. Tabla propia, no un tipo más de `items`.
+  `CREATE TABLE IF NOT EXISTS people (
+     id TEXT PRIMARY KEY NOT NULL,
+     tmdbId INTEGER NOT NULL,
+     name TEXT NOT NULL,
+     photo TEXT,
+     addedAt INTEGER NOT NULL
+   );
+   CREATE UNIQUE INDEX IF NOT EXISTS people_tmdbId_idx ON people (tmdbId);`,
 ]
 
 /** Versión actual del esquema local. */

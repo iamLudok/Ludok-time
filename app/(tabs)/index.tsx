@@ -10,6 +10,7 @@ import { space } from '../../src/ui/theme'
 import { PosterCard, countEpisodes } from '../../src/components/PosterCard'
 import { ContinueWatching } from '../../src/components/ContinueWatching'
 import { BackupBanner } from '../../src/components/BackupBanner'
+import { FavouritePeople } from '../../src/components/FavouritePeople'
 import { useLibraryItems, useAllEpisodes } from '../../src/hooks/useLibrary'
 import type { MediaType, Status } from '../../src/types'
 
@@ -22,6 +23,7 @@ const TYPES: readonly ChipOption<TypeFilter>[] = [
   { key: 'series', label: 'Series' },
   { key: 'movie', label: 'Pelis' },
   { key: 'book', label: 'Libros' },
+  { key: 'manga', label: 'Manga' },
 ]
 
 const STATUSES: readonly ChipOption<StatusFilter>[] = [
@@ -101,6 +103,7 @@ export default function LibraryScreen() {
           <View style={styles.header}>
             <BackupBanner itemCount={items.length} />
             <ContinueWatching items={watchingSeries} episodes={episodes} />
+            <FavouritePeople />
             <Chips options={TYPES} value={type} onChange={setType} />
             <Chips options={STATUSES} value={status} onChange={setStatus} />
             <Txt variant="data" tone="faint">

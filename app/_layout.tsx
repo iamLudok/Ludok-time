@@ -46,8 +46,11 @@ export default function RootLayout() {
       maybeAutoBackup().catch(() => {})
     }
     run()
+    // También al salir de la app: si solo se hiciera al abrir, una sesión larga
+    // (marcar media temporada y cerrar) se quedaría sin subir hasta la próxima
+    // vez que la abrieras.
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') run()
+      if (state === 'active' || state === 'background') run()
     })
     return () => sub.remove()
   }, [ready])

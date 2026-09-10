@@ -15,9 +15,15 @@ export const items = sqliteTable('items', {
   year: integer('year'),
   runtime: integer('runtime'),
   author: text('author'),
+  // Sobra desde que se quitaron los vídeos de YouTube, que eran los únicos que
+  // la usaban. Se deja: una columna vacía no cuesta nada y borrar columnas en
+  // SQLite es de esas operaciones que no compensa arriesgar.
   url: text('url'),
   totalPages: integer('totalPages'),
   currentPage: integer('currentPage'),
+  currentChapter: integer('currentChapter'),
+  totalChapters: integer('totalChapters'),
+  readUrl: text('readUrl'),
   status: text('status').$type<Status>().notNull(),
   rating: integer('rating').notNull().default(0),
   // Nullable a propósito: ausente significa «preguntar», que es lo que quieres
@@ -42,6 +48,14 @@ export const episodes = sqliteTable('episodes', {
   watchedAt: integer('watchedAt'),
 })
 
+export const people = sqliteTable('people', {
+  id: text('id').primaryKey(),
+  tmdbId: integer('tmdbId').notNull(),
+  name: text('name').notNull(),
+  photo: text('photo'),
+  addedAt: integer('addedAt').notNull(),
+})
+
 export const settings = sqliteTable('settings', {
   id: text('id').primaryKey(),
   tmdbApiKey: text('tmdbApiKey').notNull().default(''),
@@ -60,4 +74,5 @@ export const settings = sqliteTable('settings', {
 
 export type ItemRow = typeof items.$inferSelect
 export type EpisodeRow = typeof episodes.$inferSelect
+export type PersonRow = typeof people.$inferSelect
 export type SettingsRow = typeof settings.$inferSelect

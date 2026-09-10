@@ -6,9 +6,9 @@
 // siguen entrando —, pero cambiar o quitar los que ya existen dejaría fuera
 // cualquier copia guardada antes, que es justo lo que no puede pasar aquí.
 
-export type MediaType = 'series' | 'movie' | 'book' | 'youtube' | 'custom'
+export type MediaType = 'series' | 'movie' | 'book' | 'manga' | 'custom'
 
-export type MediaSource = 'tmdb' | 'openlibrary' | 'googlebooks' | 'youtube' | 'manual'
+export type MediaSource = 'tmdb' | 'openlibrary' | 'googlebooks' | 'mangadex' | 'manual'
 
 export type Status = 'plan' | 'watching' | 'completed' | 'on_hold' | 'dropped'
 
@@ -25,14 +25,21 @@ export interface Item {
   year?: number
   /** duración en minutos (películas) o duración media de episodio (series). */
   runtime?: number
-  /** autor del libro o canal del vídeo de YouTube. */
+  /** autor del libro. */
   author?: string
-  /** enlace original (vídeos de YouTube). */
-  url?: string
   /** páginas totales del libro. */
   totalPages?: number
   /** por qué página vas (libros). */
   currentPage?: number
+  /**
+   * Manga: capítulos, no páginas. Se guarda aparte de `currentPage` a propósito
+   * — un manga en curso no tiene un número de páginas que signifique nada, y
+   * llamar «página» a un capítulo haría que el modelo mintiera.
+   */
+  currentChapter?: number
+  totalChapters?: number
+  /** Enlace directo al manga en inManga, para el botón de leer. */
+  readUrl?: string
   status: Status
   /** valoración 0–10, 0 = sin valorar. */
   rating: number
@@ -92,6 +99,24 @@ export interface Settings {
   schemaVersion: number
 }
 
+/**
+ * Un actor marcado como favorito.
+ *
+ * Va en su propia tabla y no como un `Item` más: un actor no es algo que estés
+ * viendo ni leyendo, y meterlo en la biblioteca obligaría a excluirlo en cada
+ * consulta, filtro y contador — que es exactamente el lío que dieron los vídeos
+ * de YouTube antes de quitarlos.
+ */
+export interface Person {
+  id: string
+  /** Su id en TMDB, que es por donde se le pregunta todo lo demás. */
+  tmdbId: number
+  name: string
+  /** URL de la foto, ya montada. */
+  photo?: string
+  addedAt: number
+}
+
 /** Estructura del fichero de copia de seguridad (export/import). */
 export interface BackupFile {
   app: 'ludok-time'
@@ -99,5 +124,10 @@ export interface BackupFile {
   exportedAt: number
   items: Item[]
   episodes: Episode[]
+  /**
+   * Actores favoritos. Opcional: las copias anteriores a esta función no lo
+   * traen, y el formato solo crece — nunca se quita ni se cambia lo que ya está.
+   */
+  people?: Person[]
   settings: Settings | null
 }

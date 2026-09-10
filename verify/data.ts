@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { rmSync } from 'node:fs'
 import * as schema from '../src/lib/schema'
+import { people as peopleTable } from '../src/lib/schema'
 import { CREATE_SQL } from '../src/lib/schemaSql'
 import {
   exportAll,
@@ -101,22 +102,29 @@ const items: Item[] = [
     rating: 0,
     addedAt: 1700000400000,
   },
-  {
-    id: 'it-video-1',
-    type: 'youtube',
-    source: 'youtube',
-    sourceId: 'dQw4w9WgXcQ',
-    title: 'Un vídeo',
-    author: 'Un canal',
-    poster: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
-    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    status: 'completed',
-    rating: 0,
-    addedAt: 1700000500000,
-    startedAt: 1699000000000,
-    completedAt: 1699000000000,
-  },
 ]
+
+/**
+ * Un vídeo de YouTube tal y como lo guardaba una versión anterior. Su tipo ya no
+ * existe en el modelo (por eso el cast), y está aquí a propósito: una copia
+ * antigua puede traerlos y hay que comprobar que se descartan bien en vez de
+ * acabar en la base de datos como filas que nada sabría mostrar.
+ */
+const legacyVideo = {
+  id: 'it-video-1',
+  type: 'youtube',
+  source: 'youtube',
+  sourceId: 'dQw4w9WgXcQ',
+  title: 'Un vídeo',
+  author: 'Un canal',
+  poster: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+  url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  status: 'completed',
+  rating: 0,
+  addedAt: 1700000500000,
+  startedAt: 1699000000000,
+  completedAt: 1699000000000,
+} as unknown as Item
 
 const episodes: Episode[] = [
   {
@@ -147,7 +155,7 @@ const pwaBackup: BackupFile = {
   app: 'ludok-time',
   schemaVersion: 2,
   exportedAt: 1700001000000,
-  items,
+  items: [...items, legacyVideo],
   episodes,
   settings: {
     id: 'app',
@@ -163,12 +171,13 @@ async function main() {
   console.log('\n=== 1. Importar el JSON de la PWA ===')
   const db = await freshDb()
   const res = await importBackup(db, JSON.stringify(pwaBackup), 'replace')
-  eq('títulos importados', res.items, 4)
+  eq('títulos importados (el vídeo no cuenta)', res.items, 3)
+  eq('y se descarta el vídeo', res.discardedVideos, 1)
   eq('episodios importados', res.episodes, 2)
 
   console.log('\n=== 2. Los datos cuadran ===')
   const out = await exportAll(db)
-  eq('nº de títulos', out.items.length, 4)
+  eq('nº de títulos', out.items.length, 3)
   eq('nº de episodios', out.episodes.length, 2)
   eq('episodios vistos', out.episodes.filter((e) => e.watched).length, 1)
   eq('títulos con nota', out.items.filter((i) => i.rating > 0).length, 2)
@@ -231,7 +240,7 @@ async function main() {
   }
   await importBackup(db2, JSON.stringify(edited), 'merge')
   const merged = await exportAll(db2)
-  eq('sigue habiendo 4 títulos (no se borró nada)', merged.items.length, 4)
+  eq('siguen los 3 títulos (no se borró nada)', merged.items.length, 3)
   eq('sigue habiendo 2 episodios', merged.episodes.length, 2)
   eq('título actualizado', merged.items.find((i) => i.id === serieId)?.title, 'Breaking Bad (editado)')
   eq('nota actualizada', merged.items.find((i) => i.id === serieId)?.rating, 8)
@@ -245,11 +254,10 @@ async function main() {
   console.log('\n=== 6. Volumen grande (troceado de inserts) ===')
   const db3 = await freshDb()
   const many: Item[] = Array.from({ length: 4000 }, (_, i) => ({
-    id: `vid-${i}`,
-    type: 'youtube' as const,
-    source: 'youtube' as const,
-    sourceId: `v${i}`,
-    title: `Vídeo ${i}`,
+    id: `lib-${i}`,
+    type: 'book' as const,
+    source: 'manual' as const,
+    title: `Libro ${i}`,
     status: 'completed' as const,
     rating: 0,
     addedAt: 1700000000000 + i,
@@ -270,10 +278,10 @@ async function main() {
     'replace',
   )
   const ms = Date.now() - t0
-  eq('4004 títulos importados', big.items, 4004)
+  eq('4003 títulos importados', big.items, 4003)
   eq('3000 episodios importados', big.episodes, 3000)
   const bigOut = await exportAll(db3)
-  eq('4004 títulos leídos de vuelta', bigOut.items.length, 4004)
+  eq('4003 títulos leídos de vuelta', bigOut.items.length, 4003)
   eq('3000 episodios leídos de vuelta', bigOut.episodes.length, 3000)
   eq('1500 vistos', bigOut.episodes.filter((e) => e.watched).length, 1500)
   console.log(`        (${ms} ms)`)
@@ -316,7 +324,35 @@ async function main() {
   await importBackup(dbOtro, JSON.stringify(exported), 'replace')
   eq('no borra la contraseña ya guardada', (await readSettings(dbOtro)).nextcloudPassword, 'LA-MIA')
 
-  console.log('\n=== 9. La versión del formato sigue siendo la de la web ===')
+  console.log('\n=== 9. Actores favoritos en la copia ===')
+  const dbP = await freshDb()
+  await importBackup(dbP, JSON.stringify(pwaBackup), 'replace')
+  await dbP.insert(peopleTable).values([
+    { id: 'p1', tmdbId: 12214, name: 'Gillian Anderson', photo: 'https://x/g.jpg', addedAt: 1 },
+    { id: 'p2', tmdbId: 2201315, name: 'Emma Mackey', photo: null, addedAt: 2 },
+  ])
+  const conGente = await exportAll(dbP)
+  eq('salen los dos en la copia', conGente.people?.length, 2)
+  eq('con su id de TMDB', conGente.people?.find((p) => p.id === 'p1')?.tmdbId, 12214)
+  // Sin foto tiene que quedar AUSENTE, no null: el fichero mantiene su forma.
+  const sinFoto = JSON.parse(JSON.stringify(conGente.people?.find((p) => p.id === 'p2')))
+  check('sin foto, el campo ni aparece', !('photo' in sinFoto))
+
+  // Y vuelven a entrar tal cual.
+  const dbP2 = await freshDb()
+  const res2 = await importBackup(dbP2, JSON.stringify(conGente), 'replace')
+  eq('se importan los dos', res2.people, 2)
+  const vuelta = await exportAll(dbP2)
+  eq('siguen siendo dos', vuelta.people?.length, 2)
+  eq('con su nombre', vuelta.people?.find((p) => p.tmdbId === 12214)?.name, 'Gillian Anderson')
+
+  // Una copia ANTERIOR a los favoritos no trae la lista: no debe romper nada.
+  const dbViejo = await freshDb()
+  const resViejo = await importBackup(dbViejo, JSON.stringify(pwaBackup), 'replace')
+  eq('una copia antigua importa con 0 actores', resViejo.people, 0)
+  eq('y sus títulos entran igual', resViejo.items, 3)
+
+  console.log('\n=== 10. La versión del formato sigue siendo la de la web ===')
   eq('schemaVersion exportada', out.schemaVersion, 2)
 
   console.log(

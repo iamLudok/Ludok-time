@@ -1,6 +1,6 @@
 # Ludok Time
 
-App Android para apuntar todo lo que veo y leo: **series, películas, libros y vídeos de YouTube**.
+App Android para apuntar todo lo que veo y leo: **series, películas, libros y manga**.
 Nació porque TV Time se cayó y perdí mi historial entero. Aquí **los datos son míos** y viven en mi
 móvil.
 
@@ -23,10 +23,11 @@ Todo lo demás va después.
 | Series | TMDB | Episodio a episodio, con «ver siguiente» y el fotograma de cada uno |
 | Películas | TMDB | Vista / pendiente |
 | Libros | Open Library + Google Books, o a mano | Por página, con % leído |
-| Vídeos de YouTube | Enlace, a mano o import de Takeout | Sección propia |
+| Manga | MangaDex, o a mano | Por **capítulo**, con enlace para leerlo |
 
-Los vídeos viven en su pestaña y no entran en la biblioteca ni en los contadores: al importar el
-historial de Takeout pueden ser miles y sepultarían el resto.
+Hubo vídeos de YouTube (por enlace y por import del historial de Takeout). Se quitaron en agosto de
+2026 por no usarse. Una copia anterior a eso se sigue pudiendo importar: los vídeos se descartan y
+la app dice cuántos.
 
 ## Arranque
 
@@ -77,8 +78,9 @@ corre en el móvil** contra un SQLite de escritorio:
 
 ```bash
 npm run verify:data       # formato de copia: ida y vuelta, huecos, volumen, rechazos
-npm run verify:library    # reglas: episodios, estados, libros, vídeos, borrados
+npm run verify:library    # reglas: episodios, estados, libros, borrados
 npm run verify:migration  # que actualizar de versión no pierde nada
+npm run verify:upcoming   # qué series entran en «Próximos»
 npm run verify:real ./ludok-time-backup-2026-07-27.json   # con una copia real
 ```
 
@@ -91,6 +93,54 @@ asíncronas, mientras que `expo-sqlite` sí: con libsql la semántica coincide c
 
 Estas pruebas ya han pillado fallos que habrían corrompido datos en silencio — por ejemplo un
 upsert que mezclaba las filas entre sí al importar.
+
+## Manga
+
+Se busca en **MangaDex** (gratis, sin clave): da estado, año, portada y descripción en español, y
+maneja bien los títulos que solo existen en japonés romanizado.
+
+El progreso va **por capítulos**, en sus propios campos y no reutilizando los de páginas de los
+libros: un manga en curso no tiene un número de páginas que signifique nada.
+
+Cada manga puede llevar un enlace para leerlo. Al añadirlo, la app intenta encontrarlo en
+[inManga](https://inmanga.com) sola.
+
+> ⚠️ Su buscador **no funciona por parámetros de URL** (`?suggestion=` devuelve la página sin
+> filtrar): hay que llamar a la petición POST interna y sacar el enlace del HTML que devuelve. Eso
+> depende de cómo tengan hecha su web, así que `findReadUrl` **nunca lanza error** — si no lo
+> encuentra devuelve `null` y la ficha te deja pegar el enlace a mano.
+
+## Actores
+
+En la ficha de cada serie y película sale su **reparto** (los 12 primeros, que TMDB devuelve
+ordenados por relevancia — Sex Education trae 149 personas). Tocando una cara entras en su perfil:
+quién es, y todo lo que ha hecho, marcando con ✓ lo que ya tienes en la biblioteca.
+
+Desde ahí puedes **seguir** a un actor. Los que sigues aparecen en la Biblioteca, debajo de
+«Continuar viendo», y sus estrenos futuros salen en **Próximos**.
+
+Los favoritos viven en **su propia tabla**, no como un tipo más de `items`: un actor no es algo que
+estés viendo ni leyendo, y meterlo en la biblioteca obligaría a excluirlo en cada consulta, filtro y
+contador — el mismo lío que dieron los vídeos de YouTube antes de quitarlos.
+
+El reparto y los perfiles **no se guardan**: se piden en vivo y llegan en la misma petición que el
+resto de la ficha. Solo se guarda a quién sigues.
+
+## Próximos episodios y estrenos
+
+Pestaña **Próximos**: cuándo sale el siguiente capítulo de cada serie que sigues, ordenado por lo
+que llega antes. Es una consulta en vivo a TMDB, nada se guarda — las fechas cambian, y una fecha
+caducada guardada sería peor que no tenerla.
+
+Incluye las series marcadas como **completadas** a propósito: desde que no se guardan episodios sin
+emitir, estar al día con una serie en emisión la deja como completada, y ese es justo el caso en el
+que quieres saber cuándo sale el siguiente.
+
+Solo se guardan episodios **ya emitidos**. TMDB devuelve las temporadas enteras, con los capítulos
+futuros dentro; guardarlos ensuciaba la lista y dejaba el progreso clavado en 24/25.
+
+Debajo, en el mismo scroll, los **estrenos de tus actores favoritos**. Si un título sale por varios
+actores que sigues, aparece una sola vez con todos sus nombres.
 
 ## Copia automática a Nextcloud
 
@@ -111,8 +161,9 @@ si funcionan. Como la app se abre a diario, en la práctica la copia acaba siend
 
 ```
 app/                     # rutas (expo-router)
-  (tabs)/                # Biblioteca, Añadir, Vídeos, Stats, Ajustes
-  series|movie|book/[id] # fichas
+  (tabs)/                # Biblioteca, Añadir, Próximos, Stats, Ajustes
+  series|movie|book|manga/[id]  # fichas
+  person/[tmdbId]        # perfil de un actor
   preview/…              # vista previa antes de añadir
 src/
   lib/                   # datos y lógica

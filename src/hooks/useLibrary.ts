@@ -1,4 +1,4 @@
-import { eq, ne } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite'
 import { db } from '../lib/db'
 import { items as itemsTable, episodes as episodesTable } from '../lib/schema'
@@ -19,28 +19,13 @@ export interface Query<T> {
   ready: boolean
 }
 
-/**
- * La biblioteca, reactiva. Excluye los vídeos de YouTube: viven en su propia
- * pestaña porque al importar el historial pueden ser miles y sepultarían el
- * resto — el mismo criterio que en la web.
- */
+/** La biblioteca, reactiva. */
 export function useLibraryItems(): Query<Item[]> {
   const { data, updatedAt } = useLiveQuery(
-    db.select().from(itemsTable).where(ne(itemsTable.type, 'youtube')).orderBy(itemsTable.addedAt),
+    db.select().from(itemsTable).orderBy(itemsTable.addedAt),
   )
   // Drizzle ordena ascendente; la biblioteca se ve con lo más reciente primero.
   return { data: (data ?? []).map(rowToItem).reverse(), ready: updatedAt !== undefined }
-}
-
-/** Los vídeos de YouTube, reactivos y ya ordenados por lo último visto. */
-export function useVideos(): Query<Item[]> {
-  const { data, updatedAt } = useLiveQuery(
-    db.select().from(itemsTable).where(eq(itemsTable.type, 'youtube')),
-  )
-  return {
-    data: (data ?? []).map(rowToItem).sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0)),
-    ready: updatedAt !== undefined,
-  }
 }
 
 /** Un título por su id. `undefined` mientras carga, `null` si de verdad no existe. */
