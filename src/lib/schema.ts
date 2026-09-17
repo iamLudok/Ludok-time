@@ -59,6 +59,8 @@ export const people = sqliteTable('people', {
 export const settings = sqliteTable('settings', {
   id: text('id').primaryKey(),
   tmdbApiKey: text('tmdbApiKey').notNull().default(''),
+  // Sobra desde que se quitó la búsqueda por Google Books: mismo motivo que
+  // `url` en `items`, se deja para no arriesgar un DROP COLUMN.
   googleBooksApiKey: text('googleBooksApiKey'),
   theme: text('theme').$type<'dark' | 'light' | 'system'>().notNull().default('system'),
   lastBackup: integer('lastBackup').notNull().default(0),

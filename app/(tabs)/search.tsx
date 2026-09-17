@@ -20,7 +20,6 @@ import { useSettings, useSettingsQuery } from '../../src/hooks/useSettings'
 import { useDebounced } from '../../src/hooks/useDebounced'
 import { searchMulti, discover, posterUrl, type TmdbSearchResult } from '../../src/lib/tmdb'
 import { searchBooks, type BookResult } from '../../src/lib/openlibrary'
-import { searchGoogleBooks } from '../../src/lib/googlebooks'
 import { addManualBook, addManualManga } from '../../src/lib/library'
 import { searchManga, statusLabel as mangaStatus, type MangaResult } from '../../src/lib/mangadex'
 import { setMangaPreview } from '../../src/lib/mangaPreview'
@@ -328,18 +327,16 @@ function ScreenSearch() {
   )
 }
 
-/* --- Libros (Open Library + Google Books + a mano) ------------------------- */
+/* --- Libros (Open Library + a mano) ----------------------------------------- */
 
 const SOURCE_LABEL: Record<BookResult['source'], string> = {
   openlibrary: 'Open Library',
-  googlebooks: 'Google Books',
 }
 
 function BookSearch() {
   const router = useRouter()
   const palette = usePalette()
   const toast = useToast()
-  const settings = useSettings()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<BookResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -362,23 +359,12 @@ function BookSearch() {
     let alive = true
     setLoading(true)
     setError('')
-    // Dos fuentes independientes: si una falla (p. ej. la cuota diaria de
-    // Google Books sin API key), la otra sigue funcionando igual.
-    Promise.allSettled([
-      searchBooks(text),
-      searchGoogleBooks(text, settings.googleBooksApiKey || undefined),
-    ])
-      .then(([ol, gb]) => {
+    searchBooks(text)
+      .then((r) => alive && setResults(r))
+      .catch((e: unknown) => {
         if (!alive) return
-        setResults([
-          ...(ol.status === 'fulfilled' ? ol.value : []),
-          ...(gb.status === 'fulfilled' ? gb.value : []),
-        ])
-        if (ol.status === 'rejected' && gb.status === 'rejected') {
-          setError('No se pudo buscar en ninguna fuente. Prueba a apuntarlo a mano abajo.')
-        } else if (gb.status === 'rejected') {
-          setError(gb.reason instanceof Error ? gb.reason.message : 'Google Books no respondió.')
-        }
+        setError(e instanceof Error ? e.message : 'No se pudo buscar. Prueba a apuntarlo a mano abajo.')
+        setResults([])
       })
       .finally(() => {
         if (alive) setLoading(false)
@@ -387,7 +373,7 @@ function BookSearch() {
     return () => {
       alive = false
     }
-  }, [debounced, settings.googleBooksApiKey])
+  }, [debounced])
 
   const addManual = async () => {
     if (!title.trim()) return
@@ -418,7 +404,7 @@ function BookSearch() {
         loading={loading}
       />
       <Txt variant="small" tone="faint">
-        Open Library + Google Books
+        Open Library
       </Txt>
       {error ? (
         <Txt variant="small" tone="danger">

@@ -536,7 +536,14 @@ export async function deleteItem(itemId: string): Promise<void> {
 
 /* --- Libros ---------------------------------------------------------------- */
 
-/** Añade un libro desde Open Library o Google Books. Devuelve el id local. */
+/**
+ * Añade un libro desde Open Library. Devuelve el id local.
+ *
+ * `source` admite también 'googlebooks' aunque ya no se busque ahí: hace
+ * falta para que el `verify` de deduplicación siga probando que dos fuentes
+ * distintas con la misma clave son libros distintos, y para no perder tipado
+ * si algún día se lee un item ya guardado con esa fuente.
+ */
 export async function addBook(
   book: {
     key: string

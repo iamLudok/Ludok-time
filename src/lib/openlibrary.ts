@@ -5,9 +5,9 @@ const SEARCH = 'https://openlibrary.org/search.json'
 const COVERS = 'https://covers.openlibrary.org/b/id'
 
 export interface BookResult {
-  /** clave de la obra: id de Open Library o de Google Books, según `source`. */
+  /** clave de la obra: id de Open Library. */
   key: string
-  source: 'openlibrary' | 'googlebooks'
+  source: 'openlibrary'
   title: string
   author?: string
   year?: number

@@ -15,9 +15,9 @@ import { useToast } from '../../src/ui/Toast'
 import { space } from '../../src/ui/theme'
 
 /**
- * Vista previa de un libro SIN añadirlo. Ni Open Library ni Google Books tienen
- * un endpoint de detalle tan rico como TMDB, así que se reutilizan los datos que
- * ya trajo la búsqueda: aquí solo se llega desde el buscador.
+ * Vista previa de un libro SIN añadirlo. Open Library no tiene un endpoint de
+ * detalle tan rico como TMDB, así que se reutilizan los datos que ya trajo la
+ * búsqueda: aquí solo se llega desde el buscador.
  *
  * La ruta no lleva la clave del libro a propósito: las de Open Library son del
  * tipo `/works/OL123W`, y una barra dentro de un segmento de ruta da problemas

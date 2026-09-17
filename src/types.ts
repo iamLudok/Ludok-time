@@ -8,6 +8,9 @@
 
 export type MediaType = 'series' | 'movie' | 'book' | 'manga' | 'custom'
 
+// 'googlebooks' ya no se busca (se quitó esa fuente), pero se queda en la
+// unión: libros ya añadidos desde ahí guardan ese valor en `source`, y
+// quitarlo del tipo dejaría de tipar bien esos items existentes.
 export type MediaSource = 'tmdb' | 'openlibrary' | 'googlebooks' | 'mangadex' | 'manual'
 
 export type Status = 'plan' | 'watching' | 'completed' | 'on_hold' | 'dropped'
@@ -71,7 +74,11 @@ export interface Episode {
 export interface Settings {
   id: 'app'
   tmdbApiKey: string
-  /** Opcional: sin ella Google Books comparte una cuota diaria anónima que se agota fácil. */
+  /**
+   * Sin uso: era la key de Google Books, fuente que ya no se busca. Se queda
+   * en el tipo por la misma regla que `MediaSource` — quitarla dejaría fuera
+   * este campo de copias guardadas antes de quitar la fuente.
+   */
   googleBooksApiKey?: string
   theme: 'dark' | 'light' | 'system'
   lastBackup: number

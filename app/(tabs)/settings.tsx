@@ -25,11 +25,9 @@ export default function SettingsScreen() {
   const episodes = useAllEpisodes()
 
   const [tmdbKey, setTmdbKey] = useState('')
-  const [gbKey, setGbKey] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => setTmdbKey(settings.tmdbApiKey), [settings.tmdbApiKey])
-  useEffect(() => setGbKey(settings.googleBooksApiKey ?? ''), [settings.googleBooksApiKey])
 
   const days = daysSinceBackup(settings.lastBackup)
   const lastBackupText = !settings.lastBackup
@@ -143,30 +141,6 @@ export default function SettingsScreen() {
               onPress={() => Linking.openURL('https://www.themoviedb.org/settings/api')}
             />
           </View>
-        </Card>
-
-        {/* Google Books */}
-        <Card>
-          <Txt variant="title">API de Google Books</Txt>
-          <Txt variant="small" tone="muted">
-            Opcional. Sin key propia se comparte una cuota diaria anónima que se agota fácil y deja
-            de dar resultados; Open Library sigue funcionando igual.
-          </Txt>
-          <TextInput
-            value={gbKey}
-            onChangeText={setGbKey}
-            placeholder="Pega aquí tu API key (opcional)"
-            placeholderTextColor={palette.faint}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={field}
-          />
-          <Button
-            title="Guardar"
-            kind="primary"
-            small
-            onPress={() => updateSettings({ googleBooksApiKey: gbKey.trim() })}
-          />
         </Card>
 
         {/* Tema */}

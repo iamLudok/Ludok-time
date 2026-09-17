@@ -1,7 +1,7 @@
-// Tiene que ir ANTES que cualquier otra cosa: los clientes de TMDB, Open
-// Library y Google Books construyen sus URLs con `URL` + `searchParams`, y el
-// motor de React Native (Hermes) no los trae completos — sin esto, todas las
-// llamadas a las APIs fallarían con "URLSearchParams.get is not implemented".
+// Tiene que ir ANTES que cualquier otra cosa: los clientes de TMDB y Open
+// Library construyen sus URLs con `URL` + `searchParams`, y el motor de React
+// Native (Hermes) no los trae completos — sin esto, todas las llamadas a las
+// APIs fallarían con "URLSearchParams.get is not implemented".
 // Es lo que permite reutilizar esos ficheros idénticos a los de la web.
 import 'react-native-url-polyfill/auto'
 import { useEffect, useState } from 'react'

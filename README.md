@@ -22,7 +22,7 @@ Todo lo demás va después.
 |---|---|---|
 | Series | TMDB | Episodio a episodio, con «ver siguiente» y el fotograma de cada uno |
 | Películas | TMDB | Vista / pendiente |
-| Libros | Open Library + Google Books, o a mano | Por página, con % leído |
+| Libros | Open Library, o a mano | Por página, con % leído |
 | Manga | MangaDex, o a mano | Por **capítulo**, con enlace para leerlo |
 
 Hubo vídeos de YouTube (por enlace y por import del historial de Takeout). Se quitaron en agosto de
