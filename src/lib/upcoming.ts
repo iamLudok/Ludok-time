@@ -1,4 +1,5 @@
 import { getSeries, getPersonFull, type TmdbNextEpisode, type TmdbPersonCredit } from './tmdb'
+import { hasEpisode, syncSeriesEpisodes } from './library'
 import type { Item, Person } from '../types'
 
 /**
@@ -82,6 +83,12 @@ export async function fetchUpcoming(series: Item[]): Promise<Upcoming[]> {
         // Serie terminada o cancelada: no hay siguiente que esperar.
         if (s.inProduction === false) continue
         if (!s.nextEpisode) continue
+        // El anterior ya salió pero no está en tu lista (el siguiente aún no sale,
+        // así que no había ninguna pista): se trae solo, sin pedirte nada.
+        const last = s.lastEpisode
+        if (last && !(await hasEpisode(item.id, last.season, last.episode))) {
+          await syncSeriesEpisodes(item.id).catch(() => {})
+        }
         results.push({
           item,
           next: s.nextEpisode,

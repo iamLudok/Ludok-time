@@ -70,9 +70,20 @@ function today(): string {
  * les puso fecha, y esconderlas sería peor. Se comparan como texto para no
  * meterse en zonas horarias — el formato 'YYYY-MM-DD' ya ordena bien.
  */
-function hasAired(airDate: string | undefined, hoy = today()): boolean {
-  if (!airDate) return true
-  return airDate <= hoy
+function hasAired(
+  airDate: string | undefined,
+  hoy = today(),
+  /** Con `last` (último emitido según TMDB) se decide también para los episodios sin fecha. */
+  ep?: { season: number; episode: number },
+  last?: { season: number; episode: number },
+): boolean {
+  if (airDate) return airDate <= hoy
+  // Sin fecha: si TMDB dice cuál fue el último emitido, lo que va DESPUÉS es
+  // «plantilla» de una temporada ya anunciada (Episodio 2, 3… sin fecha ni foto).
+  if (ep && last) {
+    return ep.season < last.season || (ep.season === last.season && ep.episode <= last.episode)
+  }
+  return true
 }
 
 /**
@@ -123,6 +134,12 @@ async function findBySource(
     )
     .limit(1)
   return rows[0] ? rowToItem(rows[0]) : undefined
+}
+
+/** Si ya tienes guardado un episodio concreto de la serie. */
+export async function hasEpisode(itemId: string, season: number, episode: number): Promise<boolean> {
+  const eps = await episodesOf(itemId)
+  return eps.some((e) => e.season === season && e.episode === episode)
 }
 
 async function insertEpisodes(eps: Episode[]): Promise<void> {
@@ -217,7 +234,7 @@ export async function addSeriesFromTmdb(
   )
   const episodes: Episode[] = seasons
     .flat()
-    .filter((e) => hasAired(e.airDate))
+    .filter((e) => hasAired(e.airDate, undefined, e, s.lastEpisode))
     .map((e) => ({
     id: newId(),
     itemId,
@@ -259,7 +276,7 @@ export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResu
   )
   const nuevos: Episode[] = seasons
     .flat()
-    .filter((e) => hasAired(e.airDate))
+    .filter((e) => hasAired(e.airDate, undefined, e, s.lastEpisode))
     .filter((e) => !have.has(`${e.season}-${e.episode}`))
     .map((e) => ({
       id: newId(),
@@ -272,7 +289,12 @@ export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResu
       still: posterUrl(e.stillPath, 'w185'),
       watched: false,
     }))
-  if (nuevos.length) await insertEpisodes(nuevos)
+  if (nuevos.length) {
+    await insertEpisodes(nuevos)
+    // Una serie «completada» con un episodio nuevo sin ver vuelve a «viendo»:
+    // si no, no aparecería en «Continuar viendo».
+    await recomputeSeriesStatus(itemId)
+  }
   return { added: nuevos.length, failedSeasons }
 }
 
@@ -351,7 +373,13 @@ export async function dropUnannouncedSeasons(itemId: string): Promise<number> {
   const announced = new Set(announcedSeasons(s.seasons).map((se) => se.seasonNumber))
 
   const eps = await episodesOf(itemId)
-  const sobran = eps.filter((e) => !e.watched && !announced.has(e.season))
+  // Además de las temporadas sin anunciar: los episodios «plantilla» de una
+  // temporada sí anunciada (sin fecha y posteriores al último emitido).
+  const sobran = eps.filter(
+    (e) =>
+      !e.watched &&
+      (!announced.has(e.season) || !hasAired(e.airDate, undefined, e, s.lastEpisode)),
+  )
   if (!sobran.length) return 0
 
   for (const part of chunk(sobran.map((e) => e.id))) {

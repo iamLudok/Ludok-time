@@ -25,13 +25,19 @@ export function ContinueWatching({
 
   const rows = items
     .map((item) => {
-      const next = episodes
-        .filter((e) => e.itemId === item.id)
+      const mine = episodes.filter((e) => e.itemId === item.id)
+      const next = [...mine]
         .sort((a, b) => a.season - b.season || a.episode - b.episode)
         .find((e) => !e.watched)
-      return next ? { item, next } : null
+      // Lo último que marcaste de esta serie: es lo que decide el orden.
+      const lastWatched = mine.reduce((max, e) => Math.max(max, e.watchedAt ?? 0), 0)
+      const left = mine.filter((e) => !e.watched).length
+      return next ? { item, next, lastWatched, left } : null
     })
-    .filter((r): r is { item: Item; next: Episode } => r !== null)
+    .filter((r): r is { item: Item; next: Episode; lastWatched: number; left: number } => r !== null)
+    // La que acabas de ver, arriba. Sort estable: las que nunca has marcado
+    // (lastWatched 0) se quedan al final en el orden en que ya venían.
+    .sort((a, b) => b.lastWatched - a.lastWatched)
 
   if (rows.length === 0) return null
 
@@ -40,7 +46,7 @@ export function ContinueWatching({
       <Txt variant="label" tone="muted">
         Continuar viendo
       </Txt>
-      {rows.map(({ item, next }) => (
+      {rows.map(({ item, next, left }) => (
         <View key={item.id} style={[styles.row, { borderColor: palette.line }]}>
           <Pressable onPress={() => router.push(`/series/${item.id}`)} style={styles.tap}>
             <Poster uri={item.poster} type={item.type} title={item.title} width={40} />
@@ -48,9 +54,14 @@ export function ContinueWatching({
               <Txt variant="section" numberOfLines={1}>
                 {item.title}
               </Txt>
-              <Txt variant="small" tone="muted" numberOfLines={1}>
-                {epLabel(next)}
-              </Txt>
+              <View style={styles.sub}>
+                <Txt variant="small" tone="muted" numberOfLines={1} style={styles.epLabel}>
+                  {epLabel(next)}
+                </Txt>
+                <Txt variant="small" tone="faint">
+                  · {left === 1 ? 'queda 1' : `quedan ${left}`}
+                </Txt>
+              </View>
             </View>
           </Pressable>
           <Tick
@@ -75,4 +86,7 @@ const styles = StyleSheet.create({
   },
   tap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, minWidth: 0 },
   main: { flex: 1, minWidth: 0, gap: 2 },
+  // El título del episodio es lo que se recorta si no cabe, no el «quedan N».
+  sub: { flexDirection: 'row', gap: space.xs },
+  epLabel: { flexShrink: 1 },
 })

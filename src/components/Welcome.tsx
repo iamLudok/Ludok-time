@@ -14,7 +14,7 @@ import { radius, space } from '../ui/theme'
  * Existe por una razón concreta: quien instala la app de cero se topaba con
  * «necesitas una API key de TMDB» sin ninguna explicación de qué es eso ni de
  * por qué hace falta. Aquí se explica antes de que se choque con ello, se puede
- * dejar para luego (libros y YouTube funcionan sin nada), y se ofrece importar
+ * dejar para luego (libros y manga funcionan sin nada), y se ofrece importar
  * una copia, que es como llega quien ya venía usando la versión web.
  */
 export function Welcome() {
@@ -67,7 +67,7 @@ export function Welcome() {
       <View style={styles.intro}>
         <Txt variant="display">Ludok Time</Txt>
         <Txt variant="body" tone="muted">
-          Apunta las series, películas, libros y vídeos que ves. Todo se guarda solo en este
+          Apunta las series, películas, libros y manga que ves y lees. Todo se guarda solo en este
           móvil: no hay cuentas, ni servidores, ni nadie mirando.
         </Txt>
       </View>
@@ -102,7 +102,7 @@ export function Welcome() {
           onPress={() => finish(key.trim())}
         />
         <Txt variant="small" tone="faint">
-          Puedes dejarlo para luego: los libros y los vídeos de YouTube funcionan sin esto, y la
+          Puedes dejarlo para luego: los libros y el manga funcionan sin esto, y la
           clave se puede poner en cualquier momento desde Ajustes.
         </Txt>
       </View>
