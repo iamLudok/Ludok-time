@@ -10,16 +10,19 @@ import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core'
 import {
   items as itemsTable,
   episodes as episodesTable,
+  pastWatches as pastWatchesTable,
   people as peopleTable,
   settings as settingsTable,
 } from './schema'
 import {
   rowToItem,
   rowToEpisode,
+  rowToPastWatch,
   rowToPerson,
   rowToSettings,
   itemToRow,
   episodeToRow,
+  pastWatchToRow,
   personToRow,
   settingsToRow,
 } from './rows'
@@ -66,6 +69,7 @@ export async function exportAll(database: LudokDb): Promise<BackupFile> {
   const itemRows = await database.select().from(itemsTable)
   const episodeRows = await database.select().from(episodesTable)
   const peopleRows = await database.select().from(peopleTable)
+  const pastRows = await database.select().from(pastWatchesTable)
   const appSettings = await readSettings(database)
 
   // La contraseña de Nextcloud NO se exporta. Una copia se comparte y se mueve
@@ -81,6 +85,7 @@ export async function exportAll(database: LudokDb): Promise<BackupFile> {
     items: itemRows.map(rowToItem),
     episodes: episodeRows.map(rowToEpisode),
     people: peopleRows.map(rowToPerson),
+    pastWatches: pastRows.map(rowToPastWatch),
     settings: safeSettings,
   }
 }
@@ -90,6 +95,8 @@ export interface ImportResult {
   episodes: number
   /** Actores favoritos restaurados. */
   people: number
+  /** Marcas de visionados anteriores restauradas. */
+  pastWatches: number
   /** Vídeos de YouTube descartados por venir de una copia anterior a quitarlos. */
   discardedVideos: number
 }
@@ -128,10 +135,12 @@ export async function importBackup(
   const incomingEpisodes = parsed.episodes ?? []
   // Ausente en copias anteriores a los favoritos: se trata como lista vacía.
   const incomingPeople = parsed.people ?? []
+  const incomingPast = parsed.pastWatches ?? []
 
   await database.transaction(async (tx: LudokDb) => {
     if (mode === 'replace') {
       await tx.delete(episodesTable)
+      await tx.delete(pastWatchesTable)
       await tx.delete(itemsTable)
       await tx.delete(peopleTable)
     }
@@ -152,6 +161,12 @@ export async function importBackup(
         .insert(peopleTable)
         .values(part.map(personToRow))
         .onConflictDoUpdate({ target: peopleTable.id, set: excludedSet(peopleTable) })
+    }
+    for (const part of chunk(incomingPast)) {
+      await tx
+        .insert(pastWatchesTable)
+        .values(part.map(pastWatchToRow))
+        .onConflictDoUpdate({ target: pastWatchesTable.id, set: excludedSet(pastWatchesTable) })
     }
   })
 
@@ -177,6 +192,7 @@ export async function importBackup(
     items: incomingItems.length,
     episodes: incomingEpisodes.length,
     people: incomingPeople.length,
+    pastWatches: incomingPast.length,
     discardedVideos,
   }
 }

@@ -48,6 +48,14 @@ export const episodes = sqliteTable('episodes', {
   watchedAt: integer('watchedAt'),
 })
 
+export const pastWatches = sqliteTable('past_watches', {
+  id: text('id').primaryKey(),
+  itemId: text('itemId').notNull(),
+  episodeId: text('episodeId').notNull(),
+  round: integer('round').notNull(),
+  watchedAt: integer('watchedAt'),
+})
+
 export const people = sqliteTable('people', {
   id: text('id').primaryKey(),
   tmdbId: integer('tmdbId').notNull(),
@@ -76,5 +84,6 @@ export const settings = sqliteTable('settings', {
 
 export type ItemRow = typeof items.$inferSelect
 export type EpisodeRow = typeof episodes.$inferSelect
+export type PastWatchRow = typeof pastWatches.$inferSelect
 export type PersonRow = typeof people.$inferSelect
 export type SettingsRow = typeof settings.$inferSelect

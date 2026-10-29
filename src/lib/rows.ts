@@ -8,17 +8,20 @@ import { SCHEMA_VERSION } from './version'
 import type {
   items,
   episodes,
+  pastWatches,
   people,
   settings,
   ItemRow,
   EpisodeRow,
+  PastWatchRow,
   PersonRow,
   SettingsRow,
 } from './schema'
-import type { Item, Episode, Person, Settings } from '../types'
+import type { Item, Episode, PastWatch, Person, Settings } from '../types'
 
 type ItemInsert = typeof items.$inferInsert
 type EpisodeInsert = typeof episodes.$inferInsert
+type PastWatchInsert = typeof pastWatches.$inferInsert
 type PersonInsert = typeof people.$inferInsert
 type SettingsInsert = typeof settings.$inferInsert
 
@@ -106,6 +109,26 @@ export function episodeToRow(e: Episode): EpisodeInsert {
     still: n(e.still),
     watched: !!e.watched,
     watchedAt: n(e.watchedAt),
+  }
+}
+
+export function rowToPastWatch(r: PastWatchRow): PastWatch {
+  return {
+    id: r.id,
+    itemId: r.itemId,
+    episodeId: r.episodeId,
+    round: r.round,
+    watchedAt: u(r.watchedAt),
+  }
+}
+
+export function pastWatchToRow(w: PastWatch): PastWatchInsert {
+  return {
+    id: w.id,
+    itemId: w.itemId,
+    episodeId: w.episodeId,
+    round: w.round,
+    watchedAt: n(w.watchedAt),
   }
 }
 

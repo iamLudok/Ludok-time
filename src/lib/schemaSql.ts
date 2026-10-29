@@ -67,7 +67,16 @@ CREATE TABLE IF NOT EXISTS people (
   addedAt INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS past_watches (
+  id TEXT PRIMARY KEY NOT NULL,
+  itemId TEXT NOT NULL,
+  episodeId TEXT NOT NULL,
+  round INTEGER NOT NULL,
+  watchedAt INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS episodes_itemId_idx ON episodes (itemId);
+CREATE INDEX IF NOT EXISTS past_watches_itemId_idx ON past_watches (itemId);
 CREATE UNIQUE INDEX IF NOT EXISTS people_tmdbId_idx ON people (tmdbId);
 CREATE INDEX IF NOT EXISTS items_type_idx ON items (type);
 CREATE INDEX IF NOT EXISTS items_status_idx ON items (status);
@@ -119,6 +128,16 @@ export const MIGRATIONS: string[] = [
      addedAt INTEGER NOT NULL
    );
    CREATE UNIQUE INDEX IF NOT EXISTS people_tmdbId_idx ON people (tmdbId);`,
+  // v7 → v8: visionados anteriores, para poder volver a ver una serie sin
+  // perder las fechas de la primera vez.
+  `CREATE TABLE IF NOT EXISTS past_watches (
+     id TEXT PRIMARY KEY NOT NULL,
+     itemId TEXT NOT NULL,
+     episodeId TEXT NOT NULL,
+     round INTEGER NOT NULL,
+     watchedAt INTEGER
+   );
+   CREATE INDEX IF NOT EXISTS past_watches_itemId_idx ON past_watches (itemId);`,
 ]
 
 /** Versión actual del esquema local. */

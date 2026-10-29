@@ -13,7 +13,12 @@ export type MediaType = 'series' | 'movie' | 'book' | 'manga' | 'custom'
 // quitarlo del tipo dejaría de tipar bien esos items existentes.
 export type MediaSource = 'tmdb' | 'openlibrary' | 'googlebooks' | 'mangadex' | 'manual'
 
-export type Status = 'plan' | 'watching' | 'completed' | 'on_hold' | 'dropped'
+/**
+ * 'rewatching' es solo de series: la estás viendo otra vez después de haberla
+ * terminado. Va aparte de 'watching' para poder filtrarla y para que no parezca
+ * que es la primera vez que la ves.
+ */
+export type Status = 'plan' | 'watching' | 'rewatching' | 'completed' | 'on_hold' | 'dropped'
 
 export interface Item {
   id: string
@@ -124,6 +129,29 @@ export interface Person {
   addedAt: number
 }
 
+/**
+ * Una marca de «visto» de un visionado anterior de la serie.
+ *
+ * Al volver a ver una serie, los episodios se desmarcan para seguir el progreso
+ * desde cero, y lo que tenían marcado se mueve aquí. Sin esto se perdería la
+ * fecha en que viste cada episodio la primera vez, que es justo lo que importa.
+ * Las marcas del visionado ACTUAL siguen en `Episode`, como siempre.
+ *
+ * También vale para películas: ahí la fecha actual es `completedAt` y aquí van
+ * las veces anteriores, con `episodeId` igual al propio `itemId` (la película
+ * es su único «episodio»). Así no hace falta otra tabla para lo mismo.
+ */
+export interface PastWatch {
+  id: string
+  itemId: string
+  /** En películas, el mismo `itemId`. */
+  episodeId: string
+  /** Número de visionado: 1 = la primera vez que la viste, 2 = la segunda… */
+  round: number
+  /** Ausente si en su día el episodio estaba marcado sin fecha. */
+  watchedAt?: number
+}
+
 /** Estructura del fichero de copia de seguridad (export/import). */
 export interface BackupFile {
   app: 'ludok-time'
@@ -136,5 +164,7 @@ export interface BackupFile {
    * traen, y el formato solo crece — nunca se quita ni se cambia lo que ya está.
    */
   people?: Person[]
+  /** Visionados anteriores de las series. Opcional por la misma razón que `people`. */
+  pastWatches?: PastWatch[]
   settings: Settings | null
 }
