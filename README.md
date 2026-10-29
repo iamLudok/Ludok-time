@@ -126,6 +126,22 @@ contador — el mismo lío que dieron los vídeos de YouTube antes de quitarlos.
 El reparto y los perfiles **no se guardan**: se piden en vivo y llegan en la misma petición que el
 resto de la ficha. Solo se guarda a quién sigues.
 
+## Ver una serie o una película otra vez
+
+En una serie completada sale **Verla otra vez** (o el estado «Viendo otra vez»). Los episodios se
+desmarcan para seguir el progreso desde cero, y lo que tenían marcado pasa a la tabla
+`past_watches` con su fecha: no se pierde cuándo viste cada episodio la primera vez. En la ficha
+salen los visionados anteriores, y en cada episodio sus fechas de antes.
+
+Se desmarca en vez de llevar un contador para que «Seguir viendo», «Ver siguiente» y el progreso
+funcionen igual que la primera vez. Si se pulsa sin querer, se puede deshacer mientras no hayas
+marcado nada nuevo. Las estadísticas suman todos los visionados.
+
+En las películas es más simple, porque se ven de una sentada: **La he vuelto a ver** pasa la fecha
+de «Visto» al historial y pone la de hoy, que se puede corregir. Usan la misma tabla, con
+`episodeId` igual al id de la propia película. El último visionado se puede quitar, y entonces
+vuelve la fecha anterior.
+
 ## Próximos episodios y estrenos
 
 Pestaña **Próximos**: cuándo sale el siguiente capítulo de cada serie que sigues, ordenado por lo
