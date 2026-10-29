@@ -30,7 +30,7 @@ export function followedSeries(items: Item[]): Item[] {
       i.type === 'series' &&
       i.source === 'tmdb' &&
       !!i.sourceId &&
-      (i.status === 'watching' || i.status === 'completed'),
+      (i.status === 'watching' || i.status === 'rewatching' || i.status === 'completed'),
   )
 }
 

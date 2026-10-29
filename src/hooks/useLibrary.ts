@@ -3,9 +3,13 @@ import { useEffect, useState } from 'react'
 import { addDatabaseChangeListener } from 'expo-sqlite'
 import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core'
 import { db } from '../lib/db'
-import { items as itemsTable, episodes as episodesTable } from '../lib/schema'
-import { rowToItem, rowToEpisode } from '../lib/rows'
-import type { Item, Episode } from '../types'
+import {
+  items as itemsTable,
+  episodes as episodesTable,
+  pastWatches as pastWatchesTable,
+} from '../lib/schema'
+import { rowToItem, rowToEpisode, rowToPastWatch } from '../lib/rows'
+import type { Item, Episode, PastWatch } from '../types'
 
 /**
  * ⚠️ `useLiveQuery` de Drizzle arranca con `data = []` y lanza la consulta en un
@@ -110,4 +114,20 @@ export function useEpisodes(itemId: string | undefined): Episode[] {
 export function useAllEpisodes(): Episode[] {
   const { data } = useLiveQuery(episodesTable, db.select().from(episodesTable))
   return (data ?? []).map(rowToEpisode)
+}
+
+/** Marcas de los visionados anteriores de una serie. */
+export function usePastWatches(itemId: string | undefined): PastWatch[] {
+  const { data } = useLiveQuery(
+    pastWatchesTable,
+    db.select().from(pastWatchesTable).where(eq(pastWatchesTable.itemId, itemId ?? '')),
+    [itemId],
+  )
+  return (data ?? []).map(rowToPastWatch)
+}
+
+/** Todas las marcas de visionados anteriores (para las estadísticas). */
+export function useAllPastWatches(): PastWatch[] {
+  const { data } = useLiveQuery(pastWatchesTable, db.select().from(pastWatchesTable))
+  return (data ?? []).map(rowToPastWatch)
 }
