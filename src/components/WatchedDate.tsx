@@ -5,7 +5,7 @@ import { Txt } from '../ui/Text'
 import { Button } from '../ui/Button'
 import { space } from '../ui/theme'
 
-function fmt(ts: number): string {
+export function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString('es-ES', {
     day: 'numeric',
     month: 'short',
@@ -43,7 +43,7 @@ export function WatchedDate({
     <View style={styles.wrap}>
       <Pressable onPress={() => setPicking(true)} hitSlop={6} accessibilityRole="button">
         <Txt variant="small" tone="muted">
-          {timestamp ? `${label}: ${fmt(timestamp)}` : `${label} sin fecha`} ✎
+          {timestamp ? `${label}: ${fmtDate(timestamp)}` : `${label} sin fecha`} ✎
         </Txt>
       </Pressable>
       {timestamp !== undefined && (

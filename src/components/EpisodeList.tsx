@@ -8,14 +8,15 @@ import {
   setSeasonWatched,
   countPreviousUnwatched,
   stopAskingMarkPrevious,
+  pastByEpisode,
 } from '../lib/library'
-import { WatchedDate } from './WatchedDate'
+import { WatchedDate, fmtDate } from './WatchedDate'
 import { usePalette } from '../ui/ThemeProvider'
 import { Txt } from '../ui/Text'
 import { Button } from '../ui/Button'
 import { Tick } from '../ui/Tick'
 import { radius, space } from '../ui/theme'
-import type { Episode } from '../types'
+import type { Episode, PastWatch } from '../types'
 
 function groupBySeason(eps: Episode[]): [number, Episode[]][] {
   const map = new Map<number, Episode[]>()
@@ -40,15 +41,19 @@ function initialOpenSeason(entries: [number, Episode[]][]): number | null {
 export function EpisodeList({
   itemId,
   episodes,
+  past = [],
   askMarkPrevious = true,
 }: {
   itemId: string
   episodes: Episode[]
+  /** Marcas de visionados anteriores, para enseñar cuándo viste cada uno antes. */
+  past?: PastWatch[]
   /** false si en esta serie ya dijiste que no volvieras a preguntar. */
   askMarkPrevious?: boolean
 }) {
   const palette = usePalette()
   const entries = groupBySeason(episodes)
+  const before = pastByEpisode(past)
 
   /**
    * Al marcar un episodio suelto teniendo anteriores sin ver, ofrece marcarlos
@@ -169,6 +174,15 @@ export function EpisodeList({
                           marcar hasta aquí
                         </Txt>
                       </Pressable>
+                    )}
+                    {before.has(e.id) && (
+                      <Txt variant="data" tone="faint">
+                        Antes:{' '}
+                        {before
+                          .get(e.id)!
+                          .map((w) => (w.watchedAt ? fmtDate(w.watchedAt) : 'sin fecha'))
+                          .join(', ')}
+                      </Txt>
                     )}
                   </View>
 

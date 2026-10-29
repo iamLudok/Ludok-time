@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ScrollView, View, StyleSheet, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
-import { useItem, useEpisodes } from '../../src/hooks/useLibrary'
+import { useItem, useEpisodes, usePastWatches } from '../../src/hooks/useLibrary'
 import {
   setEpisodeWatched,
+  undoRewatch,
   updateItem,
   backfillEpisodeStills,
   dropUnairedEpisodes,
@@ -25,6 +26,7 @@ import { WatchedDate } from '../../src/components/WatchedDate'
 import { WhereToWatch } from '../../src/components/WhereToWatch'
 import { SimilarTitles } from '../../src/components/SimilarTitles'
 import { CastRow } from '../../src/components/CastRow'
+import { PastViewings, askRewatch } from '../../src/components/PastViewings'
 
 export default function SeriesDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -32,6 +34,7 @@ export default function SeriesDetail() {
   const toast = useToast()
   const item = useItem(id)
   const episodes = useEpisodes(id)
+  const past = usePastWatches(id)
 
   const tmdbId = item?.source === 'tmdb' && item.sourceId ? Number(item.sourceId) : undefined
   // UNA sola petición para toda la ficha: datos, dónde verla y similares.
@@ -119,7 +122,30 @@ export default function SeriesDetail() {
             onChange={(ts) => updateItem(item.id, { completedAt: ts })}
           />
         )}
+        {item.status === 'completed' && watched > 0 && (
+          <Button
+            title="Verla otra vez"
+            small
+            onPress={() => askRewatch(item.id, item.title)}
+            style={styles.cta}
+          />
+        )}
+        {/* Solo mientras no hayas marcado nada del visionado nuevo: así
+            deshacer nunca puede llevarse progreso por delante. */}
+        {item.status === 'rewatching' && watched === 0 && past.length > 0 && (
+          <Button
+            title="Deshacer «Verla otra vez»"
+            small
+            kind="ghost"
+            onPress={async () => {
+              if (await undoRewatch(item.id)) toast('Marcas recuperadas')
+            }}
+            style={styles.cta}
+          />
+        )}
       </DetailHead>
+
+      <PastViewings past={past} />
 
       <MissingEpisodes itemId={item.id} localEpisodes={episodes} tmdb={tmdb} />
 
@@ -144,6 +170,7 @@ export default function SeriesDetail() {
         <EpisodeList
           itemId={item.id}
           episodes={episodes}
+          past={past}
           askMarkPrevious={item.askMarkPrevious !== false}
         />
       )}

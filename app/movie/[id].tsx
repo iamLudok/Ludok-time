@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ScrollView, View, StyleSheet, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
-import { useItem } from '../../src/hooks/useLibrary'
-import { setStatus, statusLabel, updateItem } from '../../src/lib/library'
+import { useItem, usePastWatches } from '../../src/hooks/useLibrary'
+import { rewatchMovie, setStatus, statusLabel, updateItem } from '../../src/lib/library'
 import { getMovieFull, type TmdbMovieFull } from '../../src/lib/tmdb'
 import { DetailHead } from '../../src/ui/DetailHead'
 import { Txt } from '../../src/ui/Text'
@@ -16,12 +16,14 @@ import { WatchedDate } from '../../src/components/WatchedDate'
 import { WhereToWatch } from '../../src/components/WhereToWatch'
 import { SimilarTitles } from '../../src/components/SimilarTitles'
 import { CastRow } from '../../src/components/CastRow'
+import { MoviePastViewings } from '../../src/components/PastViewings'
 
 export default function MovieDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const palette = usePalette()
   const toast = useToast()
   const item = useItem(id)
+  const past = usePastWatches(id)
 
   const tmdbId = item?.source === 'tmdb' && item.sourceId ? Number(item.sourceId) : undefined
   const [tmdb, setTmdb] = useState<TmdbMovieFull | null | undefined>(undefined)
@@ -78,6 +80,17 @@ export default function MovieDetail() {
             onChange={(ts) => updateItem(item.id, { completedAt: ts })}
           />
         )}
+        {watched && (
+          <Button
+            title="La he vuelto a ver"
+            small
+            onPress={async () => {
+              if (await rewatchMovie(item.id)) toast('Apuntada con fecha de hoy')
+            }}
+            style={styles.cta}
+          />
+        )}
+        {watched && <MoviePastViewings itemId={item.id} past={past} />}
       </DetailHead>
 
       {item.overview ? (

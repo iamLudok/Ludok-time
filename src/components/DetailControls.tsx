@@ -5,10 +5,14 @@ import { usePalette } from '../ui/ThemeProvider'
 import { Txt } from '../ui/Text'
 import { Button } from '../ui/Button'
 import { Chips, type ChipOption } from '../ui/Chips'
+import { askRewatch } from './PastViewings'
 import { radius, space } from '../ui/theme'
 import type { Item, Status } from '../types'
 
 const STATUSES: Status[] = ['plan', 'watching', 'completed', 'on_hold', 'dropped']
+// «Viendo otra vez» solo existe para las series: es lo único que tiene
+// episodios que desmarcar y un historial donde guardar las fechas.
+const SERIES_STATUSES: Status[] = ['plan', 'watching', 'rewatching', 'completed', 'on_hold', 'dropped']
 
 /**
  * Estado, valoración y borrar. No hay etiquetas ni notas: se quitaron a
@@ -19,10 +23,15 @@ export function DetailControls({ item }: { item: Item }) {
   const router = useRouter()
   const palette = usePalette()
 
-  const options: ChipOption<Status>[] = STATUSES.map((s) => ({
-    key: s,
-    label: statusLabel(s, item.type),
-  }))
+  const options: ChipOption<Status>[] = (item.type === 'series' ? SERIES_STATUSES : STATUSES).map(
+    (s) => ({ key: s, label: statusLabel(s, item.type) }),
+  )
+
+  const onStatus = (s: Status) => {
+    if (s === item.status) return
+    if (s === 'rewatching') askRewatch(item.id, item.title)
+    else setStatus(item.id, s)
+  }
 
   const confirmDelete = () => {
     Alert.alert('¿Quitar de la biblioteca?', `"${item.title}" y todo su progreso.`, [
@@ -44,7 +53,7 @@ export function DetailControls({ item }: { item: Item }) {
         <Txt variant="label" tone="muted">
           Estado
         </Txt>
-        <Chips options={options} value={item.status} onChange={(s) => setStatus(item.id, s)} />
+        <Chips options={options} value={item.status} onChange={onStatus} />
       </View>
 
       <View style={styles.block}>
