@@ -29,6 +29,7 @@ const TYPES: readonly ChipOption<TypeFilter>[] = [
 const STATUSES: readonly ChipOption<StatusFilter>[] = [
   { key: 'all', label: 'Todos' },
   { key: 'watching', label: 'Viendo' },
+  { key: 'rewatching', label: 'Viendo otra vez' },
   { key: 'plan', label: 'Pendiente' },
   { key: 'completed', label: 'Completado' },
   { key: 'on_hold', label: 'En pausa' },
@@ -73,7 +74,9 @@ export default function LibraryScreen() {
     })
   }, [items, type, status, sortBy])
 
-  const watchingSeries = items.filter((i) => i.type === 'series' && i.status === 'watching')
+  const watchingSeries = items.filter(
+    (i) => i.type === 'series' && (i.status === 'watching' || i.status === 'rewatching'),
+  )
   // Se cuentan una sola vez para toda la rejilla, no una por tarjeta.
   const counts = useMemo(() => countEpisodes(episodes), [episodes])
 

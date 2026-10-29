@@ -3,8 +3,8 @@ import { Screen } from '../../src/ui/Screen'
 import { Txt } from '../../src/ui/Text'
 import { usePalette } from '../../src/ui/ThemeProvider'
 import { radius, space } from '../../src/ui/theme'
-import { useLibraryItems, useAllEpisodes } from '../../src/hooks/useLibrary'
-import type { Item } from '../../src/types'
+import { useLibraryItems, useAllEpisodes, useAllPastWatches } from '../../src/hooks/useLibrary'
+import type { Episode, Item } from '../../src/types'
 
 const DEFAULT_EPISODE_MIN = 40
 const DEFAULT_MOVIE_MIN = 110
@@ -21,6 +21,7 @@ function fmtDuration(minutes: number): string {
 export default function StatsScreen() {
   const { data: library } = useLibraryItems()
   const episodes = useAllEpisodes()
+  const past = useAllPastWatches()
 
   const seriesItems = library.filter((i) => i.type === 'series')
   const movies = library.filter((i) => i.type === 'movie')
@@ -28,8 +29,20 @@ export default function StatsScreen() {
   const manga = library.filter((i) => i.type === 'manga')
 
   // --- Series: duración real de TMDB cuando la hay, media orientativa si no.
-  const watchedEps = episodes.filter((e) => e.watched)
+  // Cuenta lo marcado ahora y lo de visionados anteriores: un episodio visto
+  // dos veces son dos veces su duración.
   const seriesById = new Map<string, Item>(seriesItems.map((i) => [i.id, i]))
+  const moviesById = new Map<string, Item>(movies.map((i) => [i.id, i]))
+  const seriesPast = past.filter((w) => seriesById.has(w.itemId))
+  const moviesPast = past.filter((w) => moviesById.has(w.itemId))
+  const episodeById = new Map<string, Episode>(episodes.map((e) => [e.id, e]))
+  const watchedEps: Episode[] = [
+    ...episodes.filter((e) => e.watched),
+    // Si el episodio ya no existe (TMDB lo quitó), cuenta igual con la
+    // duración de la serie: lo viste.
+    ...seriesPast.map((w) => episodeById.get(w.episodeId) ?? ({ itemId: w.itemId } as Episode)),
+  ]
+  const rewatched = new Set(seriesPast.map((w) => w.itemId)).size
   let seriesMinutes = 0
   let seriesEstimated = 0
   for (const e of watchedEps) {
@@ -40,9 +53,12 @@ export default function StatsScreen() {
 
   // --- Películas
   const moviesWatched = movies.filter((i) => i.status === 'completed')
+  // Cada vez anterior cuenta otra vez su duración.
+  const movieViewings: Item[] = [...moviesWatched, ...moviesPast.map((w) => moviesById.get(w.itemId)!)]
+  const moviesRewatched = new Set(moviesPast.map((w) => w.itemId)).size
   let moviesMinutes = 0
   let moviesEstimated = 0
-  for (const m of moviesWatched) {
+  for (const m of movieViewings) {
     moviesMinutes += m.runtime || DEFAULT_MOVIE_MIN
     if (!m.runtime) moviesEstimated++
   }
@@ -58,7 +74,14 @@ export default function StatsScreen() {
           title="Series"
           stats={[
             { n: String(seriesItems.length), l: 'En biblioteca' },
-            { n: String(seriesItems.filter((i) => i.status === 'completed').length), l: 'Completadas' },
+            {
+              // Una serie que estás viendo otra vez ya la terminaste antes.
+              n: String(
+                seriesItems.filter((i) => i.status === 'completed' || i.status === 'rewatching').length,
+              ),
+              l: 'Completadas',
+            },
+            { n: String(rewatched), l: 'Vistas otra vez' },
             { n: String(watchedEps.length), l: 'Episodios vistos' },
             { n: fmtDuration(seriesMinutes), l: 'Tiempo visto' },
           ]}
@@ -76,6 +99,7 @@ export default function StatsScreen() {
           stats={[
             { n: String(movies.length), l: 'En biblioteca' },
             { n: String(moviesWatched.length), l: 'Vistas' },
+            { n: String(moviesRewatched), l: 'Vistas otra vez' },
             { n: fmtDuration(moviesMinutes), l: 'Tiempo visto' },
           ]}
           note={
