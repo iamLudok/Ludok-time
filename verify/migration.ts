@@ -244,6 +244,22 @@ async function main() {
   }
   check('el mismo actor dos veces lo rechaza la base', duplicado)
 
+  console.log('\n=== 7b. La tabla de visionados anteriores se crea al migrar ===')
+  check(
+    'existe la tabla past_watches',
+    tablas.rows.map((r) => String(r.name)).includes('past_watches'),
+  )
+  check(
+    'con su índice por serie',
+    idx.rows.map((r) => String(r.name)).includes('past_watches_itemId_idx'),
+  )
+  const pastCols = await columns(conFuturos, 'past_watches')
+  for (const c of ['id', 'itemId', 'episodeId', 'round', 'watchedAt']) {
+    check(`past_watches tiene ${c}`, pastCols.includes(c))
+  }
+  const item3 = await conFuturos.execute('SELECT COUNT(*) AS n FROM episodes')
+  check('los episodios siguen ahí tras migrar', Number(item3.rows[0]?.n) > 0)
+
   console.log('\n=== 8. Migrar dos veces no rompe nada ===')
   await migrate(old)
   const again = await old.execute('SELECT * FROM items')

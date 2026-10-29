@@ -17,8 +17,12 @@ import * as schema from '../src/lib/schema'
 import { CREATE_SQL } from '../src/lib/schemaSql'
 import { setDb, getDb } from '../src/lib/dbRef'
 import type { LudokDb } from '../src/lib/backupCore'
-import { items as itemsTable, episodes as episodesTable } from '../src/lib/schema'
-import { itemToRow, episodeToRow } from '../src/lib/rows'
+import {
+  items as itemsTable,
+  episodes as episodesTable,
+  pastWatches as pastWatchesTable,
+} from '../src/lib/schema'
+import { itemToRow, episodeToRow, rowToPastWatch } from '../src/lib/rows'
 import {
   setEpisodeWatched,
   setEpisodeWatchedAt,
@@ -44,6 +48,12 @@ import {
   announcedSeasons,
   stopAskingMarkPrevious,
   epLabel,
+  startRewatch,
+  undoRewatch,
+  summarizeRounds,
+  pastByEpisode,
+  rewatchMovie,
+  undoMovieRewatch,
 } from '../src/lib/library'
 import type { TmdbSeason } from '../src/lib/tmdb'
 import {
@@ -445,7 +455,121 @@ async function main() {
   const theBear = [temporadaSeason(4, '2025-06-25'), temporadaSeason(5, '2026-06-25')]
   eq_('una fecha futura pero real SÍ cuenta como anunciada', announcedSeasons(theBear).length, 2)
 
+  console.log('\n=== 21b. Verla otra vez guarda las fechas y empieza de cero ===')
+  await useFreshDb()
+  itemId = await seedSeries(3)
+  await setEpisodeWatched('ep-s1e1', true)
+  await setEpisodeWatchedAt('ep-s1e1', 1600000000000)
+  await setEpisodeWatched('ep-s1e2', true)
+  await setEpisodeWatchedAt('ep-s1e2', 1600100000000)
+  await setEpisodeWatched('ep-s1e3', true)
+  await setEpisodeWatchedAt('ep-s1e3', undefined)
+  eq_('primero completada', (await readItem(itemId))?.status, 'completed')
+
+  check('empieza el revisionado', await startRewatch(itemId))
+  eq_('estado: viendo otra vez', (await readItem(itemId))?.status, 'rewatching')
+  eq_('episodio desmarcado', (await readEp('ep-s1e1'))?.watched, false)
+  eq_('y sin fecha', (await readEp('ep-s1e1'))?.watchedAt, null)
+  let past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('tres marcas al historial', past.length, 3)
+  eq_('con su fecha de la primera vez', past.find((w) => w.episodeId === 'ep-s1e1')?.watchedAt, 1600000000000)
+  eq_('la que no tenía fecha sigue sin ella', past.find((w) => w.episodeId === 'ep-s1e3')?.watchedAt, undefined)
+  check('todas del visionado 1', past.every((w) => w.round === 1))
+  const rounds = summarizeRounds(past)
+  eq_('un visionado resumido', rounds.length, 1)
+  eq_('con 3 episodios', rounds[0]?.episodes, 3)
+  eq_('desde la fecha más antigua', rounds[0]?.from, 1600000000000)
+  eq_('hasta la más reciente', rounds[0]?.to, 1600100000000)
+
+  // Sin nada marcado, un revisionado no vuelve a «pendiente».
+  await setEpisodeWatched('ep-s1e1', true)
+  await setEpisodeWatched('ep-s1e1', false)
+  eq_('desmarcar no la saca de «viendo otra vez»', (await readItem(itemId))?.status, 'rewatching')
+  await setEpisodeWatched('ep-s1e1', true)
+  eq_('a medias sigue en «viendo otra vez»', (await readItem(itemId))?.status, 'rewatching')
+  check('a medias NO se puede deshacer', !(await undoRewatch(itemId)))
+  await setSeasonWatched(itemId, await orderedEpisodes(itemId), true)
+  eq_('al terminarla vuelve a completada', (await readItem(itemId))?.status, 'completed')
+
+  console.log('\n=== 21c. El segundo revisionado es el visionado 2 ===')
+  check('empieza otro', await startRewatch(itemId))
+  past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('seis marcas en total', past.length, 6)
+  eq_('dos visionados', summarizeRounds(past).length, 2)
+  eq_('cada episodio con sus dos fechas', pastByEpisode(past).get('ep-s1e1')?.length, 2)
+  eq_('la primera, primero', pastByEpisode(past).get('ep-s1e1')?.[0].round, 1)
+
+  console.log('\n=== 21d. Deshacer devuelve las marcas tal cual ===')
+  check('se deshace', await undoRewatch(itemId))
+  eq_('vuelve a completada', (await readItem(itemId))?.status, 'completed')
+  eq_('episodio marcado otra vez', (await readEp('ep-s1e1'))?.watched, true)
+  past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('el visionado 2 sale del historial', past.length, 3)
+  check('y el 1 se queda', past.every((w) => w.round === 1))
+  check('no se deshace dos veces', !(await undoRewatch(itemId)))
+
+  console.log('\n=== 21e. Lo que no debe hacer ===')
+  await useFreshDb()
+  itemId = await seedSeries(3)
+  check('sin nada visto no empieza', !(await startRewatch(itemId)))
+  eq_('y el estado no se toca', (await readItem(itemId))?.status, 'plan')
+  await setEpisodeWatched('ep-s1e1', true)
+  await setStatus(itemId, 'rewatching')
+  eq_('elegir el estado a mano también guarda y desmarca', (await readEp('ep-s1e1'))?.watched, false)
+  eq_('y queda en «viendo otra vez»', (await readItem(itemId))?.status, 'rewatching')
+  await deleteItem(itemId)
+  eq_('borrar la serie borra su historial', (await getDb().select().from(pastWatchesTable)).length, 0)
+
+  console.log('\n=== 21f. Películas: «la he vuelto a ver» ===')
+  await useFreshDb()
+  const peli: Item = {
+    id: 'peli-test',
+    type: 'movie',
+    source: 'tmdb',
+    sourceId: '603',
+    title: 'Peli de prueba',
+    status: 'plan',
+    rating: 0,
+    addedAt: 1700000000000,
+  }
+  await getDb().insert(itemsTable).values(itemToRow(peli))
+  check('sin verla no se puede apuntar otra vez', !(await rewatchMovie(peli.id)))
+  await setStatus(peli.id, 'completed')
+  await updateItem(peli.id, { completedAt: 1600000000000 })
+  check('vista, sí', await rewatchMovie(peli.id, 1700000000000))
+  let peliRow = await readItem(peli.id)
+  eq_('la fecha nueva es la de ahora', peliRow?.completedAt, 1700000000000)
+  eq_('sigue vista', peliRow?.status, 'completed')
+  past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('la vez anterior al historial', past.length, 1)
+  eq_('con su fecha', past[0]?.watchedAt, 1600000000000)
+  eq_('apuntando a la propia película', past[0]?.episodeId, peli.id)
+
+  await rewatchMovie(peli.id, 1800000000000)
+  past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('tercera vez: dos en el historial', past.length, 2)
+  eq_('la segunda es el visionado 2', past.find((w) => w.watchedAt === 1700000000000)?.round, 2)
+
+  check('deshacer la última', await undoMovieRewatch(peli.id))
+  peliRow = await readItem(peli.id)
+  eq_('vuelve la fecha anterior', peliRow?.completedAt, 1700000000000)
+  past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('queda una en el historial', past.length, 1)
+  eq_('la primera', past[0]?.round, 1)
+  check('deshacer otra vez', await undoMovieRewatch(peli.id))
+  eq_('y vuelve la de la primera vez', (await readItem(peli.id))?.completedAt, 1600000000000)
+  check('sin historial ya no hay nada que deshacer', !(await undoMovieRewatch(peli.id)))
+
+  // Sin fecha en su día, sin fecha en el historial (no inventa una).
+  await updateItem(peli.id, { completedAt: undefined })
+  await rewatchMovie(peli.id)
+  past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
+  eq_('la vez sin fecha sigue sin fecha', past[0]?.watchedAt, undefined)
+  await setStatus(peli.id, 'rewatching')
+  eq_('en una peli «viendo otra vez» no hace nada', (await readItem(peli.id))?.status, 'completed')
+
   console.log('\n=== 22. Textos (libros y manga se leen, no se ven) ===')
+  eq_('serie viendo otra vez', statusLabel('rewatching', 'series'), 'Viendo otra vez')
   eq_('libro leyendo', statusLabel('watching', 'book'), 'Leyendo')
   eq_('manga leyendo', statusLabel('watching', 'manga'), 'Leyendo')
   eq_('manga leído', statusLabel('completed', 'manga'), 'Leído')

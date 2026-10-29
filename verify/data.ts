@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { rmSync } from 'node:fs'
 import * as schema from '../src/lib/schema'
-import { people as peopleTable } from '../src/lib/schema'
+import { people as peopleTable, pastWatches as pastWatchesTable } from '../src/lib/schema'
 import { CREATE_SQL } from '../src/lib/schemaSql'
 import {
   exportAll,
@@ -351,6 +351,31 @@ async function main() {
   const resViejo = await importBackup(dbViejo, JSON.stringify(pwaBackup), 'replace')
   eq('una copia antigua importa con 0 actores', resViejo.people, 0)
   eq('y sus títulos entran igual', resViejo.items, 3)
+
+  console.log('\n=== 9b. Visionados anteriores en la copia ===')
+  const dbV = await freshDb()
+  await importBackup(dbV, JSON.stringify(pwaBackup), 'replace')
+  await dbV.insert(pastWatchesTable).values([
+    { id: 'pw1', itemId: 'it-serie-1', episodeId: 'ep-1', round: 1, watchedAt: 1600000000000 },
+    { id: 'pw2', itemId: 'it-serie-1', episodeId: 'ep-2', round: 1, watchedAt: null },
+  ])
+  const conHistorial = await exportAll(dbV)
+  eq('salen las dos marcas', conHistorial.pastWatches?.length, 2)
+  eq('con su fecha', conHistorial.pastWatches?.find((w) => w.id === 'pw1')?.watchedAt, 1600000000000)
+  const sinFecha = JSON.parse(JSON.stringify(conHistorial.pastWatches?.find((w) => w.id === 'pw2')))
+  check('sin fecha, el campo ni aparece', !('watchedAt' in sinFecha))
+
+  const dbV2 = await freshDb()
+  const resV = await importBackup(dbV2, JSON.stringify(conHistorial), 'replace')
+  eq('se importan las dos', resV.pastWatches, 2)
+  const vueltaV = await exportAll(dbV2)
+  eq('y vuelven a salir igual', JSON.stringify(vueltaV.pastWatches), JSON.stringify(conHistorial.pastWatches))
+  // Fusionar dos veces la misma copia no duplica el historial.
+  await importBackup(dbV2, JSON.stringify(conHistorial), 'merge')
+  eq('fusionar no duplica', (await exportAll(dbV2)).pastWatches?.length, 2)
+  // Restaurar (replace) una copia sin historial lo vacía, como todo lo demás.
+  await importBackup(dbV2, JSON.stringify(pwaBackup), 'replace')
+  eq('restaurar una copia antigua deja el historial vacío', (await exportAll(dbV2)).pastWatches?.length, 0)
 
   console.log('\n=== 10. La versión del formato sigue siendo la de la web ===')
   eq('schemaVersion exportada', out.schemaVersion, 2)
