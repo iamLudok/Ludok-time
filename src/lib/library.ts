@@ -705,8 +705,8 @@ export function pastByEpisode(past: PastWatch[]): Map<string, PastWatch[]> {
 /* --- Estado y valoración --------------------------------------------------- */
 
 export function statusLabel(status: Status, type?: MediaType): string {
-  // Los libros y el manga se leen, no se ven: cambiamos el vocabulario.
-  if (type === 'book' || type === 'manga') {
+  // Los libros se leen, no se ven: cambiamos el vocabulario.
+  if (type === 'book') {
     const books: Record<Status, string> = {
       plan: 'Pendiente',
       watching: 'Leyendo',
@@ -805,7 +805,7 @@ export async function addBook(
   return item.id
 }
 
-/** Añade un libro a mano, sin buscarlo en ninguna fuente (mangas raros, ediciones locales…). */
+/** Añade un libro a mano, sin buscarlo en ninguna fuente (ediciones locales, lo que no salga en Open Library…). */
 export async function addManualBook(
   data: { title: string; author?: string; pages?: number },
   status: Status = 'plan',
@@ -855,105 +855,3 @@ export function bookPercent(item: Item): number {
   return Math.min(100, Math.round((item.currentPage / item.totalPages) * 100))
 }
 
-/* --- Manga ----------------------------------------------------------------- */
-
-/** Añade un manga desde MangaDex. Devuelve el id local. */
-export async function addManga(
-  manga: {
-    key: string
-    title: string
-    author?: string
-    year?: number
-    cover?: string
-    description?: string
-    lastChapter?: number
-  },
-  readUrl?: string,
-  status: Status = 'plan',
-): Promise<string> {
-  const existing = await findBySource('manga', 'mangadex', manga.key)
-  if (existing) return existing.id
-
-  const item: Item = {
-    id: newId(),
-    type: 'manga',
-    source: 'mangadex',
-    sourceId: manga.key,
-    title: manga.title,
-    author: manga.author,
-    poster: manga.cover,
-    overview: manga.description,
-    year: manga.year,
-    totalChapters: manga.lastChapter,
-    currentChapter: 0,
-    readUrl,
-    status,
-    rating: 0,
-    addedAt: Date.now(),
-  }
-  await getDb().insert(itemsTable).values(itemToRow(item))
-  return item.id
-}
-
-/** Añade un manga a mano, para lo que MangaDex no tenga. */
-export async function addManualManga(
-  data: { title: string; author?: string; chapters?: number; readUrl?: string },
-  status: Status = 'plan',
-): Promise<string> {
-  const item: Item = {
-    id: newId(),
-    type: 'manga',
-    source: 'manual',
-    title: data.title,
-    author: data.author,
-    totalChapters: data.chapters,
-    currentChapter: 0,
-    readUrl: data.readUrl,
-    status,
-    rating: 0,
-    addedAt: Date.now(),
-  }
-  await getDb().insert(itemsTable).values(itemToRow(item))
-  return item.id
-}
-
-/**
- * Actualiza por qué capítulo vas y ajusta el estado.
- *
- * A diferencia de los libros, un manga en curso NO se da por terminado al
- * llegar al último capítulo publicado: sigue saliendo. Solo se marca como
- * completado si sabemos el total y lo has alcanzado, que es la misma regla,
- * pero aquí `totalChapters` se actualiza cuando MangaDex publica más.
- */
-export async function setMangaProgress(itemId: string, chapter: number): Promise<void> {
-  const item = await getItem(itemId)
-  if (!item || item.type !== 'manga') return
-
-  const total = item.totalChapters ?? 0
-  const current = Math.max(0, total ? Math.min(chapter, total) : chapter)
-  const patch: Partial<Item> = { currentChapter: current }
-
-  if (current === 0) {
-    patch.status = 'plan'
-  } else if (total && current >= total) {
-    patch.status = 'completed'
-    patch.completedAt = Date.now()
-    if (!item.startedAt) patch.startedAt = Date.now()
-  } else {
-    patch.status = 'watching' // "leyendo"
-    if (!item.startedAt) patch.startedAt = Date.now()
-  }
-
-  await updateItem(itemId, patch)
-}
-
-/** Porcentaje leído de un manga (0 si no sabemos cuántos capítulos hay). */
-export function mangaPercent(item: Item): number {
-  if (!item.totalChapters || !item.currentChapter) return 0
-  return Math.min(100, Math.round((item.currentChapter / item.totalChapters) * 100))
-}
-
-/** Guarda (o corrige) el enlace de lectura. */
-export async function setReadUrl(itemId: string, readUrl: string | undefined): Promise<void> {
-  await updateItem(itemId, { readUrl })
-}

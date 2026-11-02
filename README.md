@@ -1,6 +1,6 @@
 # Ludok Time
 
-App Android para apuntar todo lo que veo y leo: **series, películas, libros y manga**.
+App Android para apuntar todo lo que veo y leo: **series, películas y libros**.
 Nació porque TV Time se cayó y perdí mi historial entero. Aquí **los datos son míos** y viven en mi
 móvil.
 
@@ -23,11 +23,15 @@ Todo lo demás va después.
 | Series | TMDB | Episodio a episodio, con «ver siguiente» y el fotograma de cada uno |
 | Películas | TMDB | Vista / pendiente |
 | Libros | Open Library, o a mano | Por página, con % leído |
-| Manga | MangaDex, o a mano | Por **capítulo**, con enlace para leerlo |
 
 Hubo vídeos de YouTube (por enlace y por import del historial de Takeout). Se quitaron en agosto de
 2026 por no usarse. Una copia anterior a eso se sigue pudiendo importar: los vídeos se descartan y
 la app dice cuántos.
+
+También hubo manga (MangaDex, con enlace de lectura a inManga). Se quitó en noviembre de 2026
+hasta tenerlo mejor pensado. Los que ya estaban apuntados **no se borran**: siguen en la base de
+datos y en las copias, solo que la app no los muestra. Por eso se quedan en el esquema las columnas
+`currentChapter`, `totalChapters` y `readUrl`, y el tipo `manga`.
 
 ## Arranque
 
@@ -93,22 +97,6 @@ asíncronas, mientras que `expo-sqlite` sí: con libsql la semántica coincide c
 
 Estas pruebas ya han pillado fallos que habrían corrompido datos en silencio — por ejemplo un
 upsert que mezclaba las filas entre sí al importar.
-
-## Manga
-
-Se busca en **MangaDex** (gratis, sin clave): da estado, año, portada y descripción en español, y
-maneja bien los títulos que solo existen en japonés romanizado.
-
-El progreso va **por capítulos**, en sus propios campos y no reutilizando los de páginas de los
-libros: un manga en curso no tiene un número de páginas que signifique nada.
-
-Cada manga puede llevar un enlace para leerlo. Al añadirlo, la app intenta encontrarlo en
-[inManga](https://inmanga.com) sola.
-
-> ⚠️ Su buscador **no funciona por parámetros de URL** (`?suggestion=` devuelve la página sin
-> filtrar): hay que llamar a la petición POST interna y sacar el enlace del HTML que devuelve. Eso
-> depende de cómo tengan hecha su web, así que `findReadUrl` **nunca lanza error** — si no lo
-> encuentra devuelve `null` y la ficha te deja pegar el enlace a mano.
 
 ## Actores
 
@@ -178,7 +166,7 @@ si funcionan. Como la app se abre a diario, en la práctica la copia acaba siend
 ```
 app/                     # rutas (expo-router)
   (tabs)/                # Biblioteca, Añadir, Próximos, Stats, Ajustes
-  series|movie|book|manga/[id]  # fichas
+  series|movie|book/[id]  # fichas
   person/[tmdbId]        # perfil de un actor
   preview/…              # vista previa antes de añadir
 src/

@@ -207,7 +207,7 @@ async function main() {
   check('PERO se queda el marcado como visto', ids.includes('futuro-pero-visto'))
   eq('quedan 3 de 4', ids.length, 3)
 
-  console.log('\n=== 6. Columnas de manga tras migrar ===')
+  console.log('\n=== 6. Columnas de manga tras migrar (se quedan aunque se quitara el manga) ===')
   const itemCols = await columns(old, 'items')
   for (const c of ['currentChapter', 'totalChapters', 'readUrl']) {
     check(`items tiene ${c}`, itemCols.includes(c))

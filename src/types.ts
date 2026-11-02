@@ -6,6 +6,9 @@
 // siguen entrando —, pero cambiar o quitar los que ya existen dejaría fuera
 // cualquier copia guardada antes, que es justo lo que no puede pasar aquí.
 
+// 'manga' y 'mangadex' se quitaron de la app, pero se quedan en las uniones
+// por lo mismo que 'googlebooks': hay mangas apuntados antes que guardan esos
+// valores, y siguen en la base y en las copias por si el manga vuelve.
 export type MediaType = 'series' | 'movie' | 'book' | 'manga' | 'custom'
 
 // 'googlebooks' ya no se busca (se quitó esa fuente), pero se queda en la
@@ -40,9 +43,9 @@ export interface Item {
   /** por qué página vas (libros). */
   currentPage?: number
   /**
-   * Manga: capítulos, no páginas. Se guarda aparte de `currentPage` a propósito
-   * — un manga en curso no tiene un número de páginas que signifique nada, y
-   * llamar «página» a un capítulo haría que el modelo mintiera.
+   * Manga (ya no se puede añadir, pero los antiguos conservan estos campos):
+   * capítulos, no páginas. Va aparte de `currentPage` a propósito — un manga en
+   * curso no tiene un número de páginas que signifique nada.
    */
   currentChapter?: number
   totalChapters?: number

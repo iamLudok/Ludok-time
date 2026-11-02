@@ -37,11 +37,6 @@ import {
   addManualBook,
   setBookProgress,
   bookPercent,
-  addManga,
-  addManualManga,
-  setMangaProgress,
-  mangaPercent,
-  setReadUrl,
   statusLabel,
   countPreviousUnwatched,
   dropUnairedEpisodes,
@@ -338,53 +333,7 @@ async function main() {
   eq_('los que no tienen fecha no se tocan', await dropUnairedEpisodes(itemId), 0)
   eq_('siguen los 2', (await orderedEpisodes(itemId)).length, 2)
 
-  console.log('\n=== 16. Manga: progreso por capítulos ===')
-  await useFreshDb()
-  const mangaId = await addManualManga({ title: 'Berserk', author: 'Miura', chapters: 364 })
-  eq_('empieza pendiente', (await readItem(mangaId))?.status, 'plan')
-  eq_('y por el capítulo 0', (await readItem(mangaId))?.currentChapter, 0)
-
-  await setMangaProgress(mangaId, 145)
-  eq_('a medias → leyendo', (await readItem(mangaId))?.status, 'watching')
-  eq_('capítulo guardado', (await readItem(mangaId))?.currentChapter, 145)
-  eq_('40%', mangaPercent((await readItem(mangaId)) as Item), 40)
-
-  await setMangaProgress(mangaId, 999) // más que el total
-  eq_('no pasa del total', (await readItem(mangaId))?.currentChapter, 364)
-  eq_('y queda terminado', (await readItem(mangaId))?.status, 'completed')
-  eq_('100%', mangaPercent((await readItem(mangaId)) as Item), 100)
-
-  await setMangaProgress(mangaId, 0)
-  eq_('volver a 0 lo deja pendiente', (await readItem(mangaId))?.status, 'plan')
-
-  // Los capítulos NO se guardan en el campo de páginas de los libros: son
-  // conceptos distintos y mezclarlos haría que el modelo mintiera.
-  eq_('no toca currentPage', (await readItem(mangaId))?.currentPage, null)
-
-  console.log('\n=== 17. Manga sin saber cuántos capítulos tiene ===')
-  await useFreshDb()
-  const abierto = await addManualManga({ title: 'Algo en curso' })
-  await setMangaProgress(abierto, 50)
-  eq_('avanza igual', (await readItem(abierto))?.currentChapter, 50)
-  eq_('se queda leyendo, no terminado', (await readItem(abierto))?.status, 'watching')
-  eq_('sin total, 0%', mangaPercent((await readItem(abierto)) as Item), 0)
-
-  console.log('\n=== 18. Enlace de lectura ===')
-  eq_('arranca sin enlace', (await readItem(abierto))?.readUrl, null)
-  await setReadUrl(abierto, 'https://inmanga.com/ver/manga/Algo/abc')
-  eq_('se guarda', (await readItem(abierto))?.readUrl, 'https://inmanga.com/ver/manga/Algo/abc')
-  await setReadUrl(abierto, undefined)
-  eq_('y se puede quitar', (await readItem(abierto))?.readUrl, null)
-
-  console.log('\n=== 19. No se duplica un manga de MangaDex ===')
-  await useFreshDb()
-  const md = { key: 'md-1', title: 'Berserk', author: 'Miura', lastChapter: 364 }
-  const a1 = await addManga(md)
-  const a2 = await addManga(md)
-  eq_('el mismo manga devuelve el mismo id', a1, a2)
-  eq_('solo una fila', (await getDb().select().from(itemsTable)).length, 1)
-
-  console.log('\n=== 20. Actores favoritos ===')
+  console.log('\n=== 16. Actores favoritos ===')
   await useFreshDb()
   const gillian = { tmdbId: 12214, name: 'Gillian Anderson', photo: 'https://x/g.jpg' }
   const emma = { tmdbId: 2201315, name: 'Emma Mackey' }
@@ -419,7 +368,7 @@ async function main() {
   eq_('quitar uno deja el otro', (await listFavourites()).length, 1)
   check('quitar uno que no está no rompe', ((await removeFavourite(999999)), true))
 
-  console.log('\n=== 21. Temporadas anunciadas de verdad ===')
+  console.log('\n=== 17. Temporadas anunciadas de verdad ===')
   // Bug real: "Nadie quiere esto" muestra una T3 en TMDB con 10 episodios
   // "plantilla" (Episodio 1, Episodio 2…), sin foto y sin fecha — la temporada
   // se renovó pero no hay nada grabado todavía. La señal fiable es la fecha DE
@@ -455,7 +404,7 @@ async function main() {
   const theBear = [temporadaSeason(4, '2025-06-25'), temporadaSeason(5, '2026-06-25')]
   eq_('una fecha futura pero real SÍ cuenta como anunciada', announcedSeasons(theBear).length, 2)
 
-  console.log('\n=== 21b. Verla otra vez guarda las fechas y empieza de cero ===')
+  console.log('\n=== 17b. Verla otra vez guarda las fechas y empieza de cero ===')
   await useFreshDb()
   itemId = await seedSeries(3)
   await setEpisodeWatched('ep-s1e1', true)
@@ -491,7 +440,7 @@ async function main() {
   await setSeasonWatched(itemId, await orderedEpisodes(itemId), true)
   eq_('al terminarla vuelve a completada', (await readItem(itemId))?.status, 'completed')
 
-  console.log('\n=== 21c. El segundo revisionado es el visionado 2 ===')
+  console.log('\n=== 17c. El segundo revisionado es el visionado 2 ===')
   check('empieza otro', await startRewatch(itemId))
   past = (await getDb().select().from(pastWatchesTable)).map(rowToPastWatch)
   eq_('seis marcas en total', past.length, 6)
@@ -499,7 +448,7 @@ async function main() {
   eq_('cada episodio con sus dos fechas', pastByEpisode(past).get('ep-s1e1')?.length, 2)
   eq_('la primera, primero', pastByEpisode(past).get('ep-s1e1')?.[0].round, 1)
 
-  console.log('\n=== 21d. Deshacer devuelve las marcas tal cual ===')
+  console.log('\n=== 17d. Deshacer devuelve las marcas tal cual ===')
   check('se deshace', await undoRewatch(itemId))
   eq_('vuelve a completada', (await readItem(itemId))?.status, 'completed')
   eq_('episodio marcado otra vez', (await readEp('ep-s1e1'))?.watched, true)
@@ -508,7 +457,7 @@ async function main() {
   check('y el 1 se queda', past.every((w) => w.round === 1))
   check('no se deshace dos veces', !(await undoRewatch(itemId)))
 
-  console.log('\n=== 21e. Lo que no debe hacer ===')
+  console.log('\n=== 17e. Lo que no debe hacer ===')
   await useFreshDb()
   itemId = await seedSeries(3)
   check('sin nada visto no empieza', !(await startRewatch(itemId)))
@@ -520,7 +469,7 @@ async function main() {
   await deleteItem(itemId)
   eq_('borrar la serie borra su historial', (await getDb().select().from(pastWatchesTable)).length, 0)
 
-  console.log('\n=== 21f. Películas: «la he vuelto a ver» ===')
+  console.log('\n=== 17f. Películas: «la he vuelto a ver» ===')
   await useFreshDb()
   const peli: Item = {
     id: 'peli-test',
@@ -568,11 +517,9 @@ async function main() {
   await setStatus(peli.id, 'rewatching')
   eq_('en una peli «viendo otra vez» no hace nada', (await readItem(peli.id))?.status, 'completed')
 
-  console.log('\n=== 22. Textos (libros y manga se leen, no se ven) ===')
+  console.log('\n=== 18. Textos (los libros se leen, no se ven) ===')
   eq_('serie viendo otra vez', statusLabel('rewatching', 'series'), 'Viendo otra vez')
   eq_('libro leyendo', statusLabel('watching', 'book'), 'Leyendo')
-  eq_('manga leyendo', statusLabel('watching', 'manga'), 'Leyendo')
-  eq_('manga leído', statusLabel('completed', 'manga'), 'Leído')
   eq_('libro leído', statusLabel('completed', 'book'), 'Leído')
   eq_('serie viendo', statusLabel('watching', 'series'), 'Viendo')
   eq_('serie completada', statusLabel('completed'), 'Completado')
