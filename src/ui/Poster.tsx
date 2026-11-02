@@ -9,6 +9,8 @@ const FALLBACK: Record<MediaType, string> = {
   series: 'Serie',
   movie: 'Película',
   book: 'Libro',
+  // Ya no se puede añadir manga, pero los que se apuntaron antes siguen en la
+  // base de datos con este tipo (ver `MediaType`).
   manga: 'Manga',
   custom: '—',
 }

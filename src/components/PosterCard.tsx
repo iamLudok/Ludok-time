@@ -4,7 +4,7 @@ import { Poster } from '../ui/Poster'
 import { Progress } from '../ui/Progress'
 import { Txt } from '../ui/Text'
 import { usePalette } from '../ui/ThemeProvider'
-import { bookPercent, mangaPercent } from '../lib/library'
+import { bookPercent } from '../lib/library'
 import { radius, space } from '../ui/theme'
 import type { Item, Episode } from '../types'
 
@@ -12,7 +12,6 @@ const ROUTE: Record<string, string> = {
   series: 'series',
   movie: 'movie',
   book: 'book',
-  manga: 'manga',
 }
 
 /** Episodios vistos y totales de una serie, ya contados. */
@@ -65,11 +64,6 @@ export function PosterCard({
   if (item.type === 'series') {
     progress = total ? watched / total : 0
     meta = `${watched}/${total}`
-  } else if (item.type === 'manga') {
-    progress = mangaPercent(item) / 100
-    meta = item.totalChapters
-      ? `cap. ${item.currentChapter ?? 0}/${item.totalChapters}`
-      : `cap. ${item.currentChapter ?? 0}`
   } else if (item.type === 'book') {
     progress = bookPercent(item) / 100
     meta = item.totalPages ? `pág. ${item.currentPage ?? 0}/${item.totalPages}` : 'libro'

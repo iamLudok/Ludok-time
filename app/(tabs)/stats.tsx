@@ -26,7 +26,6 @@ export default function StatsScreen() {
   const seriesItems = library.filter((i) => i.type === 'series')
   const movies = library.filter((i) => i.type === 'movie')
   const books = library.filter((i) => i.type === 'book')
-  const manga = library.filter((i) => i.type === 'manga')
 
   // --- Series: duración real de TMDB cuando la hay, media orientativa si no.
   // Cuenta lo marcado ahora y lo de visionados anteriores: un episodio visto
@@ -65,7 +64,6 @@ export default function StatsScreen() {
 
   // --- Libros
   const pagesRead = books.reduce((sum, b) => sum + (b.currentPage ?? 0), 0)
-  const chaptersRead = manga.reduce((sum, m) => sum + (m.currentChapter ?? 0), 0)
 
   return (
     <Screen title="Estadísticas" padded={false}>
@@ -117,15 +115,6 @@ export default function StatsScreen() {
             { n: String(books.length), l: 'En biblioteca' },
             { n: String(books.filter((i) => i.status === 'completed').length), l: 'Leídos' },
             { n: String(pagesRead), l: 'Páginas leídas' },
-          ]}
-        />
-
-        <Section
-          title="Manga"
-          stats={[
-            { n: String(manga.length), l: 'En biblioteca' },
-            { n: String(manga.filter((i) => i.status === 'completed').length), l: 'Terminados' },
-            { n: String(chaptersRead), l: 'Capítulos leídos' },
           ]}
         />
       </ScrollView>

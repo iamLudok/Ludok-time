@@ -20,17 +20,14 @@ import { useSettings, useSettingsQuery } from '../../src/hooks/useSettings'
 import { useDebounced } from '../../src/hooks/useDebounced'
 import { searchMulti, discover, posterUrl, type TmdbSearchResult } from '../../src/lib/tmdb'
 import { searchBooks, type BookResult } from '../../src/lib/openlibrary'
-import { addManualBook, addManualManga } from '../../src/lib/library'
-import { searchManga, statusLabel as mangaStatus, type MangaResult } from '../../src/lib/mangadex'
-import { setMangaPreview } from '../../src/lib/mangaPreview'
+import { addManualBook } from '../../src/lib/library'
 import { setBookPreview } from '../../src/lib/bookPreview'
 
-type Tab = 'screen' | 'books' | 'manga'
+type Tab = 'screen' | 'books'
 
 const TABS: readonly ChipOption<Tab>[] = [
   { key: 'screen', label: 'Series y pelis' },
   { key: 'books', label: 'Libros' },
-  { key: 'manga', label: 'Manga' },
 ]
 
 export default function SearchScreen() {
@@ -42,7 +39,6 @@ export default function SearchScreen() {
       </View>
       {tab === 'screen' && <ScreenSearch />}
       {tab === 'books' && <BookSearch />}
-      {tab === 'manga' && <MangaSearch />}
     </Screen>
   )
 }
@@ -446,7 +442,7 @@ function BookSearch() {
       <View style={[styles.card, { borderColor: palette.line }]}>
         <Txt variant="section">¿No aparece? Apúntalo a mano</Txt>
         <Txt variant="small" tone="muted">
-          Útil para manga, ediciones raras o cualquier libro que no encuentres arriba.
+          Útil para ediciones raras o cualquier libro que no encuentres arriba.
         </Txt>
         <TextInput
           value={title}
@@ -475,144 +471,6 @@ function BookSearch() {
     </ScrollView>
   )
 }
-
-/* --- Manga (MangaDex + a mano) --------------------------------------------- */
-
-function MangaSearch() {
-  const router = useRouter()
-  const palette = usePalette()
-  const toast = useToast()
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<MangaResult[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [chapters, setChapters] = useState('')
-  const debounced = useDebounced(query)
-
-  useEffect(() => {
-    const text = debounced.trim()
-    if (!text) {
-      setResults([])
-      setError('')
-      setLoading(false)
-      return
-    }
-    let alive = true
-    setLoading(true)
-    setError('')
-    searchManga(text)
-      .then((r) => alive && setResults(r))
-      .catch((e: unknown) => {
-        if (!alive) return
-        setError(e instanceof Error ? e.message : 'Error al buscar')
-        setResults([])
-      })
-      .finally(() => {
-        if (alive) setLoading(false)
-      })
-    return () => {
-      alive = false
-    }
-  }, [debounced])
-
-  const addManual = async () => {
-    if (!title.trim()) return
-    const id = await addManualManga({
-      title: title.trim(),
-      author: author.trim() || undefined,
-      chapters: chapters ? parseInt(chapters, 10) : undefined,
-    })
-    toast('Añadido')
-    setTitle('')
-    setAuthor('')
-    setChapters('')
-    router.push(`/manga/${id}`)
-  }
-
-  const field = [
-    styles.input,
-    { borderColor: palette.line, color: palette.fg, backgroundColor: palette.surface },
-  ]
-
-  return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <SearchField
-        value={query}
-        onChange={setQuery}
-        onSubmit={() => {}}
-        placeholder="Buscar manga…"
-        loading={loading}
-      />
-      <Txt variant="small" tone="faint">
-        MangaDex · el enlace para leerlo se busca en inManga al añadirlo
-      </Txt>
-      {error ? (
-        <Txt variant="small" tone="danger">
-          {error}
-        </Txt>
-      ) : null}
-
-      {results.map((m) => (
-        <Pressable
-          key={m.key}
-          onPress={() => {
-            setMangaPreview(m)
-            router.push('/preview/manga')
-          }}
-          style={({ pressed }) => [
-            styles.result,
-            { borderColor: palette.line, opacity: pressed ? 0.65 : 1 },
-          ]}
-        >
-          <Poster uri={m.cover} type="manga" title={m.title} width={54} />
-          <View style={styles.resultMain}>
-            <Txt variant="section" numberOfLines={2}>
-              {m.title}
-            </Txt>
-            <Txt variant="data" tone="faint">
-              {[mangaStatus(m.status), m.year, m.lastChapter ? `${m.lastChapter} caps.` : null]
-                .filter(Boolean)
-                .join(" · ")}
-            </Txt>
-            <Txt variant="small" tone="muted" numberOfLines={1}>
-              {m.author ?? "Autor desconocido"}
-            </Txt>
-          </View>
-        </Pressable>
-      ))}
-
-      <View style={[styles.card, { borderColor: palette.line }]}>
-        <Txt variant="section">¿No aparece? Apúntalo a mano</Txt>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Título"
-          placeholderTextColor={palette.faint}
-          style={field}
-        />
-        <TextInput
-          value={author}
-          onChangeText={setAuthor}
-          placeholder="Autor (opcional)"
-          placeholderTextColor={palette.faint}
-          style={field}
-        />
-        <TextInput
-          value={chapters}
-          onChangeText={setChapters}
-          placeholder="Capítulos en total (opcional)"
-          placeholderTextColor={palette.faint}
-          keyboardType="number-pad"
-          style={field}
-        />
-        <Button title="Apuntar manga" kind="primary" onPress={addManual} disabled={!title.trim()} />
-      </View>
-    </ScrollView>
-  )
-}
-
 
 const styles = StyleSheet.create({
   tabs: { paddingLeft: space.lg, paddingBottom: space.md },

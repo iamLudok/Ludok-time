@@ -23,7 +23,6 @@ const TYPES: readonly ChipOption<TypeFilter>[] = [
   { key: 'series', label: 'Series' },
   { key: 'movie', label: 'Pelis' },
   { key: 'book', label: 'Libros' },
-  { key: 'manga', label: 'Manga' },
 ]
 
 const STATUSES: readonly ChipOption<StatusFilter>[] = [
