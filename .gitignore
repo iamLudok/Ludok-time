@@ -26,7 +26,8 @@ expo-env.d.ts
 *.mobileprovision
 keystore.properties
 
-# Copias de seguridad: llevan dentro tu API key de TMDB. Nunca subir al repo.
+# Copias de seguridad: son tus datos personales (y las anteriores a noviembre
+# de 2026 llevan dentro tu API key de TMDB). Nunca subir al repo.
 ludok-time-backup-*.json
 
 # logs

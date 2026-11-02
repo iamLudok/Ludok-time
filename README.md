@@ -158,6 +158,10 @@ Esa contraseña **no se incluye en las copias exportadas**, a propósito: una co
 mueve de sitio, y esa contraseña da permiso de escritura sobre tus ficheros — la copia acabaría
 viajando con su propia llave dentro.
 
+Por lo mismo, **la API key de TMDB tampoco sale en las copias**. Al restaurar en un móvil nuevo hay
+que volver a pegarla en Ajustes; si ese móvil ya tenía una, se conserva. Las copias de antes de
+noviembre de 2026 sí la llevan, y al importarlas se restaura.
+
 No se usa una tarea en segundo plano a propósito: Android las mata sin avisar y encima no se vería
 si funcionan. Como la app se abre a diario, en la práctica la copia acaba siendo diaria igual.
 
