@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { rmSync, readFileSync } from 'node:fs'
 import * as schema from '../src/lib/schema'
 import { CREATE_SQL } from '../src/lib/schemaSql'
-import { exportAll, importBackup, type LudokDb } from '../src/lib/backupCore'
+import { exportAll, importBackup, readSettings, type LudokDb } from '../src/lib/backupCore'
 import type { BackupFile } from '../src/types'
 
 let failures = 0
@@ -80,7 +80,9 @@ async function main() {
     back.items.filter((i) => i.rating > 0).length,
     original.items.filter((i) => i.rating > 0).length,
   )
-  eq('API key de TMDB', back.settings?.tmdbApiKey, original.settings?.tmdbApiKey)
+  // La key se restaura en la base, pero ya no vuelve a salir en la copia.
+  eq('API key de TMDB restaurada', (await readSettings(db)).tmdbApiKey, original.settings?.tmdbApiKey || '')
+  eq('y no sale en la copia nueva', back.settings?.tmdbApiKey ?? '', '')
   eq('tema', back.settings?.theme, original.settings?.theme)
 
   console.log('\n=== 3. Por tipo y estado ===')

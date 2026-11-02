@@ -181,8 +181,11 @@ async function main() {
   eq('nº de episodios', out.episodes.length, 2)
   eq('episodios vistos', out.episodes.filter((e) => e.watched).length, 1)
   eq('títulos con nota', out.items.filter((i) => i.rating > 0).length, 2)
-  eq('API key de TMDB restaurada', out.settings?.tmdbApiKey, 'CLAVE_TMDB')
-  eq('API key de Google Books restaurada', out.settings?.googleBooksApiKey, 'CLAVE_GB')
+  // Se miran en la base y no en `out`: las keys entran desde copias antiguas,
+  // pero ya no salen en las nuevas (ver apartado 8).
+  const restored = await readSettings(db)
+  eq('API key de TMDB restaurada', restored.tmdbApiKey, 'CLAVE_TMDB')
+  eq('API key de Google Books restaurada', restored.googleBooksApiKey, 'CLAVE_GB')
   eq('tema restaurado', out.settings?.theme, 'dark')
 
   console.log('\n=== 3. Campo a campo, sin pérdidas ===')
@@ -323,6 +326,19 @@ async function main() {
   await writeSettings(dbOtro, { ...(await readSettings(dbOtro)), nextcloudPassword: 'LA-MIA' })
   await importBackup(dbOtro, JSON.stringify(exported), 'replace')
   eq('no borra la contraseña ya guardada', (await readSettings(dbOtro)).nextcloudPassword, 'LA-MIA')
+
+  console.log('\n=== 8b. Las API keys tampoco salen en las copias ===')
+  // `dbNc` las tiene porque vienen de `pwaBackup`, que es una copia antigua.
+  check('el texto de la copia no contiene la key de TMDB', !asText.includes('CLAVE_TMDB'))
+  check('ni la de Google Books', !asText.includes('CLAVE_GB'))
+  // Vacía y no ausente: el campo es obligatorio en el formato de copia.
+  eq('la de TMDB sale vacía', exported.settings?.tmdbApiKey, '')
+  eq('la de Google Books ni aparece', exported.settings?.googleBooksApiKey, undefined)
+  const dbKey = await freshDb()
+  await writeSettings(dbKey, { ...(await readSettings(dbKey)), tmdbApiKey: 'LA-MIA-TMDB' })
+  await importBackup(dbKey, JSON.stringify(exported), 'replace')
+  eq('importar no borra la key ya guardada', (await readSettings(dbKey)).tmdbApiKey, 'LA-MIA-TMDB')
+  eq('el resto de ajustes sí llega', (await readSettings(dbKey)).nextcloudUrl, 'https://cloud.example.com')
 
   console.log('\n=== 9. Actores favoritos en la copia ===')
   const dbP = await freshDb()

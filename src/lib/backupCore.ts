@@ -76,7 +76,17 @@ export async function exportAll(database: LudokDb): Promise<BackupFile> {
   // de sitio, y esa contraseña da permiso de ESCRITURA sobre tus ficheros; la
   // propia copia acaba subida ahí, así que además viajaría con su propia llave
   // dentro. Al restaurar en otro móvil hay que volver a escribirla, y punto.
-  const { nextcloudPassword: _omitted, ...safeSettings } = appSettings
+  //
+  // Las API keys tampoco: son personales, y la copia acaba en Nextcloud o
+  // compartida por ahí. La de TMDB sale vacía en vez de quitarse porque el
+  // campo es obligatorio en el formato, y el import ya trata una vacía como
+  // «conserva la que haya en este móvil», también en versiones anteriores.
+  const {
+    nextcloudPassword: _omitted,
+    googleBooksApiKey: _omittedGb,
+    ...rest
+  } = appSettings
+  const safeSettings: Settings = { ...rest, tmdbApiKey: '' }
 
   return {
     app: 'ludok-time',
@@ -171,8 +181,9 @@ export async function importBackup(
   })
 
   // Las claves y las preferencias se restauran, pero se conserva la
-  // schemaVersion actual. La contraseña de Nextcloud no viene en la copia (no
-  // se exporta), así que se mantiene la que ya hubiera en este móvil.
+  // schemaVersion actual. Las copias de ahora no traen ni la contraseña de
+  // Nextcloud ni las API keys (no se exportan), así que se mantiene lo que ya
+  // hubiera en este móvil; las copias antiguas que sí traen la key la restauran.
   if (parsed.settings) {
     const current = await readSettings(database)
     await writeSettings(database, {
