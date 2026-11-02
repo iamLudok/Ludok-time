@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, ne } from 'drizzle-orm'
 import { useEffect, useState } from 'react'
 import { addDatabaseChangeListener } from 'expo-sqlite'
 import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core'
@@ -76,11 +76,17 @@ export interface Query<T> {
   ready: boolean
 }
 
-/** La biblioteca, reactiva. */
+/**
+ * La biblioteca, reactiva.
+ *
+ * El manga se quitó de la app, pero los que ya estaban apuntados se quedan en
+ * la base de datos (y en las copias) por si vuelve. Se ocultan aquí: sin ficha
+ * a la que llevar, su tarjeta abriría una pantalla rota.
+ */
 export function useLibraryItems(): Query<Item[]> {
   const { data, updatedAt } = useLiveQuery(
     itemsTable,
-    db.select().from(itemsTable).orderBy(itemsTable.addedAt),
+    db.select().from(itemsTable).where(ne(itemsTable.type, 'manga')).orderBy(itemsTable.addedAt),
   )
   // Drizzle ordena ascendente; la biblioteca se ve con lo más reciente primero.
   return { data: (data ?? []).map(rowToItem).reverse(), ready: updatedAt !== undefined }
