@@ -9,7 +9,7 @@
 Episodio a episodio, página a página, con fechas, notas y revisionados.<br>
 Sin cuentas ni servidores: los datos viven en tu móvil y se copian a tu propio Nextcloud.
 
-[![License: MIT](https://img.shields.io/github/license/iamLudok/Ludok-time?style=flat-square&color=blue)](LICENSE)
+[![License: MIT](https://img.shields.io/github/license/iamLudok/Ludok-time?style=flat-square&color=blue&label=license)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://www.android.com/)
 [![Expo SDK 57](https://img.shields.io/badge/Expo-SDK%2057-000020?style=flat-square&logo=expo&logoColor=white)](https://docs.expo.dev/versions/v57.0.0/)
 [![React Native 0.86](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactnative.dev/)
