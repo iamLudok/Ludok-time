@@ -29,7 +29,7 @@ function groupBySeason(eps: Episode[]): [number, Episode[]][] {
 
 /**
  * Temporada abierta por defecto: la que tiene el próximo episodio pendiente (o
- * la última si ya está todo visto). Las demás empiezan plegadas — con One Piece
+ * la última si ya está todo visto). Las demás empiezan plegadas: con One Piece
  * y sus 1.181 episodios esto es la diferencia entre 20 filas y 1.181.
  */
 function initialOpenSeason(entries: [number, Episode[]][]): number | null {

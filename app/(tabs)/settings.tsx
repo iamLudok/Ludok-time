@@ -94,7 +94,7 @@ export default function SettingsScreen() {
   return (
     <Screen title="Ajustes" padded={false}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Copias — lo más importante de la app */}
+        {/* Copias: lo más importante de la app */}
         <Card>
           <Txt variant="title">Copia de seguridad</Txt>
           <Txt variant="small" tone="muted">

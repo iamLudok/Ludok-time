@@ -2,8 +2,8 @@
 //
 // El formato de las copias (`BackupFile`) viene heredado de la versión web, que
 // es de donde se migraron los datos, y `SCHEMA_VERSION` sigue valiendo 2 por eso
-// mismo. Se pueden AÑADIR campos opcionales sin problema — las copias antiguas
-// siguen entrando —, pero cambiar o quitar los que ya existen dejaría fuera
+// mismo. Se pueden AÑADIR campos opcionales sin problema (las copias antiguas
+// siguen entrando), pero cambiar o quitar los que ya existen dejaría fuera
 // cualquier copia guardada antes, que es justo lo que no puede pasar aquí.
 
 // 'manga' y 'mangadex' se quitaron de la app, pero se quedan en las uniones
@@ -44,7 +44,7 @@ export interface Item {
   currentPage?: number
   /**
    * Manga (ya no se puede añadir, pero los antiguos conservan estos campos):
-   * capítulos, no páginas. Va aparte de `currentPage` a propósito — un manga en
+   * capítulos, no páginas. Va aparte de `currentPage` a propósito: un manga en
    * curso no tiene un número de páginas que signifique nada.
    */
   currentChapter?: number
@@ -84,7 +84,7 @@ export interface Settings {
   tmdbApiKey: string
   /**
    * Sin uso: era la key de Google Books, fuente que ya no se busca. Se queda
-   * en el tipo por la misma regla que `MediaSource` — quitarla dejaría fuera
+   * en el tipo por la misma regla que `MediaSource`: quitarla dejaría fuera
    * este campo de copias guardadas antes de quitar la fuente.
    */
   googleBooksApiKey?: string
@@ -119,7 +119,7 @@ export interface Settings {
  *
  * Va en su propia tabla y no como un `Item` más: un actor no es algo que estés
  * viendo ni leyendo, y meterlo en la biblioteca obligaría a excluirlo en cada
- * consulta, filtro y contador — que es exactamente el lío que dieron los vídeos
+ * consulta, filtro y contador, que es exactamente el lío que dieron los vídeos
  * de YouTube antes de quitarlos.
  */
 export interface Person {
@@ -164,7 +164,7 @@ export interface BackupFile {
   episodes: Episode[]
   /**
    * Actores favoritos. Opcional: las copias anteriores a esta función no lo
-   * traen, y el formato solo crece — nunca se quita ni se cambia lo que ya está.
+   * traen, y el formato solo crece: nunca se quita ni se cambia lo que ya está.
    */
   people?: Person[]
   /** Visionados anteriores de las series. Opcional por la misma razón que `people`. */

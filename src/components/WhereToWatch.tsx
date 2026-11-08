@@ -9,7 +9,7 @@ import { radius, space } from '../ui/theme'
 /**
  * Dónde ver una serie/película en España (datos de JustWatch vía TMDB). Consulta
  * en vivo y no se guarda: la disponibilidad cambia. Si falla o no hay datos, no
- * muestra nada — es información secundaria y no debe romper la ficha.
+ * muestra nada: es información secundaria y no debe romper la ficha.
  */
 export function WhereToWatch({
   data,

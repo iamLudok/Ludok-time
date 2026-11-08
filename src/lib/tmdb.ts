@@ -143,7 +143,7 @@ export interface TmdbSeason {
   name: string
   /**
    * Fecha de estreno DE LA TEMPORADA, no de cada episodio. Ausente cuando TMDB
-   * ni siquiera tiene decidido cuándo empieza — la señal de que es una
+   * ni siquiera tiene decidido cuándo empieza: la señal de que es una
    * temporada "plantilla" (la serie se renovó, pero no hay nada real todavía).
    */
   airDate?: string
@@ -181,7 +181,7 @@ export interface TmdbSeries {
   nextEpisode?: TmdbNextEpisode
   /**
    * Si la serie sigue en producción. OJO: usar esto y no `status` para saber
-   * si "ya terminó" — pedimos los datos en es-ES y TMDB traduce `status`
+   * si "ya terminó": pedimos los datos en es-ES y TMDB traduce `status`
    * ("Ended" → "Finalizada"), así que compararlo con los textos en inglés
    * nunca coincide de forma fiable. `in_production` es un booleano y no se
    * traduce.
@@ -289,7 +289,7 @@ interface RawCast {
  *
  * En películas cada actor trae `character` directamente. En series viene
  * `aggregate_credits`, que agrupa por temporadas y mete los personajes en un
- * array `roles` — un mismo actor puede hacer varios papeles en la misma serie.
+ * array `roles`: un mismo actor puede hacer varios papeles en la misma serie.
  */
 function toCast(raw: RawCast | undefined): TmdbCastMember[] {
   return (raw?.cast ?? []).map((c) => {
@@ -313,7 +313,7 @@ export interface TmdbSeriesFull {
    * `/similar` empareja por género y mezclaba cosas como Star Wars Rebels con
    * Kuroko no Basket, solo por compartir la etiqueta "animación". `/recommendations`
    * va por patrones de audiencia real (quien vio esto también vio aquello): para lo
-   * mismo da Slam Dunk, All Out!! (rugby), Ookiku Furikabutte (béisbol) — género y
+   * mismo da Slam Dunk, All Out!! (rugby), Ookiku Furikabutte (béisbol): género y
    * origen correctos sin filtrar nada a mano. Misma forma de datos que `/similar`
    * (por eso se reutiliza `RawSimilar`/`toSimilar`), solo cambia de dónde sale.
    */
@@ -465,8 +465,8 @@ function toSimilar(raw: RawSimilar | undefined): TmdbSimilar[] {
 }
 
 /**
- * Recomendaciones de TMDB para un título suelto — «quien vio esto, también vio
- * aquello» — sin el resto de la ficha. La usa el motor de recomendaciones de la
+ * Recomendaciones de TMDB para un título suelto («quien vio esto, también vio
+ * aquello») sin el resto de la ficha. La usa el motor de recomendaciones de la
  * pestaña «Recomendados», que pregunta por varios títulos de golpe y no
  * necesita el reparto ni dónde verla de cada uno.
  */

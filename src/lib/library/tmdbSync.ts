@@ -60,12 +60,12 @@ function today(): string {
  * TMDB devuelve las temporadas COMPLETAS, incluidos los capítulos que aún no han
  * salido: vienen con título y fecha futura, pero sin fotograma. Guardarlos
  * ensuciaba la lista con episodios que no existen todavía, hacía que el progreso
- * dijera 24/25 para siempre y —lo peor— desactivaba el aviso de «próximo
+ * dijera 24/25 para siempre y, lo peor, desactivaba el aviso de «próximo
  * episodio», que solo aparece cuando ese capítulo NO está ya en tu lista.
  *
  * Sin fecha se da por emitido: normalmente son series antiguas a las que TMDB no
  * les puso fecha, y esconderlas sería peor. Se comparan como texto para no
- * meterse en zonas horarias — el formato 'YYYY-MM-DD' ya ordena bien.
+ * meterse en zonas horarias: el formato 'YYYY-MM-DD' ya ordena bien.
  */
 function hasAired(
   airDate: string | undefined,
@@ -87,11 +87,11 @@ function hasAired(
  * Qué temporadas están anunciadas de verdad.
  *
  * En cuanto una serie se renueva, TMDB a veces añade ya la temporada siguiente
- * a la lista — a veces con episodios "plantilla" (Episodio 1, Episodio 2…),
+ * a la lista, a veces con episodios "plantilla" (Episodio 1, Episodio 2…),
  * sin foto y sin fecha. La señal fiable no es la fecha de cada episodio (de eso
  * ya se encarga `hasAired`), sino la fecha DE LA TEMPORADA: si TMDB no la
  * tiene, es que ni siquiera hay fecha de estreno decidida, y no hay nada real
- * que traer todavía — da igual que la temporada venga con 0 episodios (como
+ * que traer todavía: da igual que la temporada venga con 0 episodios (como
  * pasa a veces) o con diez de relleno (como con "Nadie quiere esto" T3).
  */
 export function announcedSeasons(seasons: TmdbSeason[]): TmdbSeason[] {
@@ -238,7 +238,7 @@ export async function syncSeriesEpisodes(itemId: string): Promise<SyncSeriesResu
 
 /**
  * Rellena la foto (still) de episodios que ya estaban guardados de antes de
- * que existiera esta función — no toca visto/fecha de ninguno. Solo pide a
+ * que existiera esta función: no toca visto/fecha de ninguno. Solo pide a
  * TMDB las temporadas que de verdad tienen algún episodio sin foto.
  */
 export async function backfillEpisodeStills(itemId: string): Promise<number> {
@@ -273,7 +273,7 @@ export async function backfillEpisodeStills(itemId: string): Promise<number> {
 /**
  * Quita los episodios que aún no se han emitido y que se guardaron antes de
  * dejar de hacerlo. Solo toca los que están SIN VER: si alguno estuviera
- * marcado, se respeta — será que la fecha de TMDB está mal, y la marca del
+ * marcado, se respeta: será que la fecha de TMDB está mal, y la marca del
  * usuario manda sobre eso.
  *
  * Devuelve cuántos ha quitado. Recalcula el estado de la serie después, porque
@@ -296,7 +296,7 @@ export async function dropUnairedEpisodes(itemId: string): Promise<number> {
  * Limpieza para lo que ya se guardó ANTES de que `addSeriesFromTmdb` y
  * `syncSeriesEpisodes` dejaran de traer temporadas sin anunciar (ver
  * `announcedSeasons`). `dropUnairedEpisodes` no pillaba este caso: sus
- * episodios "plantilla" no tienen fecha, y sin fecha se daba por emitido — la
+ * episodios "plantilla" no tienen fecha, y sin fecha se daba por emitido: la
  * misma pinta que un episodio real de una serie antigua sin ese dato.
  *
  * Aquí la comprobación es distinta y necesita preguntar a TMDB: se mira la

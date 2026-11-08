@@ -9,7 +9,7 @@ import { radius, space } from '../ui/theme'
 
 const FACE = 72
 /**
- * TMDB devuelve el reparto entero — Sex Education trae 149 personas — ordenado
+ * TMDB devuelve el reparto entero (Sex Education trae 149 personas) ordenado
  * de más a menos relevante. Con los primeros basta: el resto son papeles de un
  * episodio suelto y solo servirían para hacer la fila infinita.
  */

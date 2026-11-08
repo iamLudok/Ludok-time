@@ -32,7 +32,7 @@ import type { BackupFile, Settings } from '../types'
 
 export { SCHEMA_VERSION }
 
-/** Cualquier base de datos SQLite de Drizzle (expo-sqlite en el móvil, better-sqlite3 en los tests). */
+/** Cualquier base de datos SQLite de Drizzle (expo-sqlite en el móvil, libsql en los tests). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LudokDb = BaseSQLiteDatabase<any, any, any>
 

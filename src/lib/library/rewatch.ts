@@ -12,8 +12,8 @@ import { getItem, episodesOf, pastWatchesOf, recomputeSeriesStatus } from './que
  * Empieza a ver otra vez una serie: lo marcado pasa al historial (con su fecha)
  * y los episodios se desmarcan, para seguir el progreso desde cero.
  *
- * Se desmarca en vez de llevar un contador porque así todo lo demás —«Seguir
- * viendo», «Ver siguiente», la barra de progreso— funciona igual que la primera
+ * Se desmarca en vez de llevar un contador porque así todo lo demás («Seguir
+ * viendo», «Ver siguiente», la barra de progreso) funciona igual que la primera
  * vez sin tener que enseñarle a cada pantalla qué es un revisionado.
  *
  * Devuelve false si no había nada que guardar (ni un episodio visto).

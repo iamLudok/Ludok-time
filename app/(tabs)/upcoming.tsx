@@ -225,8 +225,8 @@ export default function UpcomingScreen() {
 /**
  * Lo que estrenan tus actores favoritos, debajo de los episodios.
  *
- * Va en el mismo scroll y no en otra pestaña: son pocas filas — un actor suele
- * tener uno o dos proyectos anunciados — y partirlo obligaría a tocar para ver
+ * Va en el mismo scroll y no en otra pestaña: son pocas filas (un actor suele
+ * tener uno o dos proyectos anunciados) y partirlo obligaría a tocar para ver
  * media pantalla vacía.
  */
 function Releases({ rows, hasFavourites }: { rows: UpcomingRelease[]; hasFavourites: boolean }) {

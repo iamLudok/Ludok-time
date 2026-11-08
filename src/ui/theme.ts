@@ -1,5 +1,5 @@
 /**
- * Tokens de diseño — dirección «Sala oscura».
+ * Tokens de diseño: dirección «Sala oscura».
  *
  * La idea que manda: la carátula es lo único que pone color. La interfaz es
  * monocroma a propósito, sin color de acento, para que el arte de cada serie no
@@ -54,7 +54,7 @@ export const dark: Palette = {
 
 /**
  * La misma idea con la luz encendida: sigue siendo monocroma y sigue dejando
- * que la carátula sea lo único con color. No es el oscuro invertido sin más —
+ * que la carátula sea lo único con color. No es el oscuro invertido sin más:
  * los grises se eligen para que el contraste aguante igual sobre blanco.
  */
 export const light: Palette = {

@@ -1,6 +1,6 @@
 // Tiene que ir ANTES que cualquier otra cosa: los clientes de TMDB y Open
 // Library construyen sus URLs con `URL` + `searchParams`, y el motor de React
-// Native (Hermes) no los trae completos — sin esto, todas las llamadas a las
+// Native (Hermes) no los trae completos: sin esto, todas las llamadas a las
 // APIs fallarían con "URLSearchParams.get is not implemented".
 // Es lo que permite reutilizar esos ficheros idénticos a los de la web.
 import 'react-native-url-polyfill/auto'
@@ -39,7 +39,7 @@ export default function RootLayout() {
   // a la app. `maybeAutoBackup` decide sola si toca (WiFi, tiempo desde la
   // última), así que llamarla de más no cuesta nada. Los fallos se ignoran a
   // propósito: si no hay red o el servidor no está, no es momento de dar la
-  // tabarra — el estado se ve en Ajustes.
+  // tabarra: el estado se ve en Ajustes.
   useEffect(() => {
     if (!ready) return
     const run = () => {

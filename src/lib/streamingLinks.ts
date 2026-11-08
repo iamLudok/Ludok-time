@@ -1,6 +1,6 @@
 // TMDB no da un enlace directo a "este título en Netflix" en su API gratuita
 // (solo un enlace genérico a una página de TMDB). En su lugar, abrimos una
-// búsqueda de ese título dentro de cada plataforma conocida — un paso menos
+// búsqueda de ese título dentro de cada plataforma conocida: un paso menos
 // que abrir la app/web y buscar a mano, aunque no sea un enlace exacto.
 
 const SEARCH_URL_BY_PROVIDER: Record<string, (title: string) => string> = {

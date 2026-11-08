@@ -47,7 +47,7 @@ function daysUntil(airDate: string): number {
  *
  * La pantalla se abre muchas veces al día y las fechas de estreno no cambian de
  * un minuto para otro: sin esto, cada visita disparaba una petición por serie.
- * Se pierde al cerrar la app, que es justo lo que se quiere — no interesa
+ * Se pierde al cerrar la app, que es justo lo que se quiere: no interesa
  * guardar fechas que pueden caducar.
  */
 const CACHE_MS = 30 * 60 * 1000

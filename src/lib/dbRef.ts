@@ -5,8 +5,8 @@ import type { LudokDb } from './backupCore'
  *
  * La lógica de negocio (`library.ts`, `settings.ts`) pide la base por aquí en
  * vez de crearla ella, para no arrastrar `expo-sqlite` a la cadena de imports.
- * Así esas reglas — marcar episodios, recalcular el estado de una serie,
- * progreso de libros — se pueden ejecutar y comprobar en el escritorio, que es
+ * Así esas reglas (marcar episodios, recalcular el estado de una serie,
+ * progreso de libros) se pueden ejecutar y comprobar en el escritorio, que es
  * lo que evita que un fallo ahí aparezca tarde y se confunda con un fallo de la
  * interfaz.
  *
