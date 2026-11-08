@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="logo/time.svg" alt="Logo de Ludok Time" width="112">
+
 # Ludok Time
 
 **App Android para apuntar las series, películas y libros que ves y lees.**
@@ -16,6 +18,14 @@ Sin cuentas ni servidores: los datos viven en tu móvil y se copian a tu propio 
 [![TMDB](https://img.shields.io/badge/datos-TMDB-01B4E4?style=flat-square&logo=themoviedatabase&logoColor=white)](https://www.themoviedb.org/)
 
 [Funciones](#funciones) · [Instalación](#instalación) · [Copias de seguridad](#copias-de-seguridad) · [Contribuir](#contribuir) · [Licencia](#licencia)
+
+<br>
+
+<img src="docs/screenshots/biblioteca.webp" alt="Biblioteca: las series en curso con su carátula, el siguiente episodio y cuántos quedan" width="260">&nbsp;
+<img src="docs/screenshots/proximos.webp" alt="Próximos: cuándo sale el siguiente episodio de cada serie y los estrenos de los actores que sigues" width="260">&nbsp;
+<img src="docs/screenshots/estadisticas.webp" alt="Estadísticas: series, películas y libros, con episodios vistos, tiempo visto y páginas leídas" width="260">
+
+<sub>Biblioteca · Próximos · Estadísticas</sub>
 
 </div>
 
@@ -254,6 +264,8 @@ src/
   hooks/                 # consultas reactivas (useLiveQuery de Drizzle)
 verify/                  # comprobaciones (Node, no van dentro del APK)
 scripts/                 # compilar y firmar el APK
+logo/                    # logo e iconos de la app
+docs/screenshots/        # capturas del README
 ```
 
 ## Detalles de diseño
