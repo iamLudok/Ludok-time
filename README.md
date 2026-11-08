@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="logo/time.svg" alt="Logo de Ludok Time" width="112">
+<img src="logo/time.svg" alt="Ludok Time logo" width="112">
 
 # Ludok Time
 
-**App Android para apuntar las series, películas y libros que ves y lees.**
+**An Android app to track the series, movies and books you watch and read.**
 
-Episodio a episodio, página a página, con fechas, notas y revisionados.<br>
-Sin cuentas ni servidores: los datos viven en tu móvil y se copian a tu propio Nextcloud.
+Episode by episode, page by page, with dates, ratings and rewatches.<br>
+No accounts, no servers: your data lives on your phone and is copied to your own Nextcloud.
 
 [![License: MIT](https://img.shields.io/github/license/iamLudok/Ludok-time?style=flat-square&color=blue&label=license)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://www.android.com/)
@@ -15,309 +15,312 @@ Sin cuentas ni servidores: los datos viven en tu móvil y se copian a tu propio 
 [![React Native 0.86](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactnative.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![TMDB](https://img.shields.io/badge/datos-TMDB-01B4E4?style=flat-square&logo=themoviedatabase&logoColor=white)](https://www.themoviedb.org/)
+[![TMDB](https://img.shields.io/badge/data-TMDB-01B4E4?style=flat-square&logo=themoviedatabase&logoColor=white)](https://www.themoviedb.org/)
 
-[Funciones](#funciones) · [Instalación](#instalación) · [Copias de seguridad](#copias-de-seguridad) · [Contribuir](#contribuir) · [Licencia](#licencia)
+[Features](#features) · [Installation](#installation) · [Backups](#backups) · [Contributing](#contributing) · [License](#license)
 
 <br>
 
-<img src="docs/screenshots/biblioteca.webp" alt="Biblioteca: las series en curso con su carátula, el siguiente episodio y cuántos quedan" width="260">&nbsp;
-<img src="docs/screenshots/proximos.webp" alt="Próximos: cuándo sale el siguiente episodio de cada serie y los estrenos de los actores que sigues" width="260">&nbsp;
-<img src="docs/screenshots/estadisticas.webp" alt="Estadísticas: series, películas y libros, con episodios vistos, tiempo visto y páginas leídas" width="260">
+<img src="docs/screenshots/biblioteca.webp" alt="Library: series in progress with their poster, the next episode and how many are left" width="260">&nbsp;
+<img src="docs/screenshots/proximos.webp" alt="Upcoming: when the next episode of each series airs, and new releases from the actors you follow" width="260">&nbsp;
+<img src="docs/screenshots/estadisticas.webp" alt="Stats: series, movies and books, with episodes watched, time watched and pages read" width="260">
 
-<sub>Biblioteca · Próximos · Estadísticas</sub>
+<sub>Library · Upcoming · Stats</sub>
 
 </div>
 
 ---
 
-## Índice
+## Table of Contents
 
-- [Por qué existe](#por-qué-existe)
-- [Funciones](#funciones)
-- [Qué sale del móvil](#qué-sale-del-móvil)
-- [Instalación](#instalación)
-- [Copias de seguridad](#copias-de-seguridad)
-- [Desarrollo](#desarrollo)
-- [Detalles de diseño](#detalles-de-diseño)
-- [Historia](#historia)
-- [Contribuir](#contribuir)
-- [Licencia](#licencia)
+- [Why It Exists](#why-it-exists)
+- [Features](#features)
+- [What Leaves Your Phone](#what-leaves-your-phone)
+- [Installation](#installation)
+- [Backups](#backups)
+- [Development](#development)
+- [Design Notes](#design-notes)
+- [History](#history)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Por qué existe
+## Why It Exists
 
-Nació porque TV Time se cayó y con él se perdió un historial entero. Aquí la regla es **no perder
-datos nunca**, y todo lo demás va después:
+It was born when TV Time went down and a whole watch history was lost with it. Here the rule is
+**never lose data**, and everything else comes second:
 
-- Los datos viven en el almacenamiento privado de la app (`/data/data/com.ludok.time/`). No hay
-  cuentas ni servidores propios.
-- Copia de seguridad en JSON, exportable e importable en cualquier momento.
-- **Copia automática a tu propio Nextcloud** al abrir la app estando en WiFi, un fichero por día.
-- Aviso en la Biblioteca cuando llevas mucho sin copia.
-- La capa de datos **se prueba de verdad** contra un SQLite real, no solo con tipos.
+- Data lives in the app's private storage (`/data/data/com.ludok.time/`). There are no accounts and
+  no servers of its own.
+- JSON backups you can export and import at any time.
+- **Automatic backup to your own Nextcloud** when you open the app on WiFi, one file per day.
+- A warning in the Library when you haven't backed up in a while.
+- The data layer is **actually tested** against a real SQLite, not just type-checked.
 
-## Funciones
+## Features
 
-| Tipo | Fuente | Progreso |
+| Type | Source | Progress |
 |---|---|---|
-| Series | TMDB | Episodio a episodio, con «ver siguiente» y el fotograma de cada uno |
-| Películas | TMDB | Vista o pendiente, con fecha de visto y revisionados |
-| Libros | Open Library, o a mano | Por página, con % leído |
+| Series | TMDB | Episode by episode, with "watch next" and a still for each episode |
+| Movies | TMDB | Watched or pending, with watch date and rewatches |
+| Books | Open Library, or by hand | By page, with % read |
 
-**Biblioteca.** Filtros por tipo y por estado (viendo, viendo otra vez, pendiente, completado, en
-pausa, abandonado), orden por recientes o por nota, «Continuar viendo» arriba y tus actores
-favoritos debajo.
+**Library.** Filters by type and status (watching, rewatching, pending, completed, paused,
+dropped), sorting by recent or by rating, "Continue watching" at the top and your favorite actors
+below.
 
-**Añadir.** Búsqueda en TMDB y en Open Library, y libros a mano para lo que no salga. Antes de
-añadir se ve una **vista previa** con la ficha completa.
+**Add.** Search TMDB and Open Library, and add books by hand when they don't show up. Before adding,
+you get a **preview** with the full details.
 
-**Fichas.** Sinopsis, nota, estado y fechas. En series y películas, además:
+**Detail pages.** Synopsis, rating, status and dates. Series and movies also have:
 
-- **Dónde verlo** en España (datos de JustWatch a través de TMDB), con un enlace que abre la
-  búsqueda del título en cada plataforma.
-- **También te puede gustar**: títulos parecidos, filtrados por idioma original para que un anime
-  no recomiende series occidentales solo por compartir género.
-- **Reparto**: los 12 primeros, por relevancia.
+- **Where to watch** in Spain (JustWatch data through TMDB), with a link that opens the title's
+  search on each platform.
+- **You might also like**: similar titles, filtered by original language so an anime doesn't
+  recommend Western series just because they share a genre.
+- **Cast**: the top 12, by relevance.
 
-**Episodios.** Marcar uno, «hasta aquí» o una temporada entera; editar la fecha de visto. Si marcas
-el 12 con el 1 al 11 sin ver, ofrece marcarlos también (y se puede pedir que no vuelva a
-preguntar en esa serie). Solo se guardan episodios **ya emitidos**: TMDB devuelve las temporadas
-enteras con los capítulos futuros dentro, y guardarlos dejaba el progreso clavado en 24/25.
+**Episodes.** Mark one, "up to here" or a whole season, and edit the watch date. If you mark
+episode 12 while 1 to 11 are unwatched, it offers to mark those too (and you can ask it to stop
+asking for that series). Only **already aired** episodes are stored: TMDB returns whole seasons
+including future episodes, and storing them left progress stuck at 24/25.
 
-**Próximos.** Cuándo sale el siguiente capítulo de cada serie que sigues, ordenado por lo que
-llega antes, y debajo los estrenos de tus actores favoritos. Es una consulta en vivo a TMDB: una
-fecha caducada guardada sería peor que no tenerla. Incluye las series **completadas** a propósito,
-porque estar al día con una serie en emisión la deja como completada, y ese es justo el caso en el
-que quieres saber cuándo sale el siguiente.
+**Upcoming.** When the next episode of each series you follow comes out, sorted by what arrives
+first, and below that the new releases of your favorite actors. It's a live query to TMDB: a stale
+stored date would be worse than none. **Completed** series are included on purpose, because being
+caught up with an airing series marks it as completed, and that's exactly when you want to know
+when the next one comes out.
 
-**Actores.** Tocando una cara del reparto entras en su perfil, con todo lo que ha hecho y un ✓ en
-lo que ya tienes. Puedes **seguirlo**. Los favoritos viven en su propia tabla y no como un tipo
-más de `items`: un actor no es algo que estés viendo, y meterlo en la biblioteca obligaría a
-excluirlo en cada consulta, filtro y contador. El reparto y los perfiles no se guardan; solo a
-quién sigues.
+**Actors.** Tap a face in the cast to open their profile, with everything they've done and a ✓ on
+what you already have. You can **follow** them. Favorites live in their own table rather than as
+another kind of `items`: an actor isn't something you're watching, and putting them in the library
+would mean excluding them from every query, filter and counter. Cast and profiles aren't stored;
+only who you follow.
 
-**Ver otra vez.** En una serie completada, **Verla otra vez** desmarca los episodios para seguir el
-progreso desde cero, y lo marcado pasa a la tabla `past_watches` con su fecha. En la ficha salen
-los visionados anteriores y, en cada episodio, sus fechas de antes. Se desmarca en vez de llevar
-un contador para que «Seguir viendo», «Ver siguiente» y el progreso funcionen igual que la primera
-vez. Se puede deshacer mientras no hayas marcado nada nuevo. En películas, **La he vuelto a ver**
-pasa la fecha anterior al historial y pone la de hoy.
+**Watch again.** On a completed series, **Verla otra vez** (watch it again) unmarks the episodes so
+progress starts from zero, and what was marked moves to the `past_watches` table with its date. The
+detail page shows previous watches and, on each episode, its earlier dates. It unmarks instead of
+keeping a counter so that "continue watching", "watch next" and progress work just like the first
+time. You can undo it as long as you haven't marked anything new. For movies, **La he vuelto a ver**
+(I watched it again) moves the previous date to the history and sets today's.
 
-**Estadísticas.** Por series, películas y libros: cuántos tienes, cuántos has terminado, cuántos
-has vuelto a ver, episodios vistos, tiempo total (con la duración real de TMDB, y una estimación
-que se indica cuando falta) y páginas leídas. Los revisionados cuentan.
+**Stats.** For series, movies and books: how many you have, how many you've finished, how many
+you've rewatched, episodes watched, total time (using TMDB's real runtimes, with an estimate that is
+flagged when one is missing) and pages read. Rewatches count.
 
-**Bienvenida.** En la primera apertura explica qué es la API key de TMDB y por qué hace falta, deja
-importar una copia y se puede saltar: los libros funcionan sin nada.
+**Welcome.** On first launch it explains what a TMDB API key is and why it's needed, lets you
+import a backup, and can be skipped: books work with nothing at all.
 
-**Tema** oscuro y claro, o el del sistema.
+**Theme**: dark, light, or the system's.
 
-## Qué sale del móvil
+The app's interface is in Spanish.
 
-No hay servidor de Ludok Time ni ninguna analítica, pero la app sí habla con servicios externos:
+## What Leaves Your Phone
 
-> **Lo que sí sale del móvil:**
-> - **TMDB** (`api.themoviedb.org`, `image.tmdb.org`): tus búsquedas, los títulos y actores que
->   abres y tu API key. Es la fuente de series, películas, reparto, plataformas y fechas.
-> - **Open Library** (`openlibrary.org`, `covers.openlibrary.org`): tus búsquedas de libros y las
->   portadas.
-> - **Tu Nextcloud**, si activas la copia automática: la copia entera, con tu usuario y tu
->   contraseña de aplicación.
-> - **Plataformas de streaming**: solo si tocas un enlace de «Dónde verlo», que abre la búsqueda en
->   el navegador o en su app.
+There is no Ludok Time server and no analytics, but the app does talk to external services:
 
-Tu biblioteca, tus marcas y tus notas nunca se envían a TMDB ni a Open Library.
+> **What does leave your phone:**
+> - **TMDB** (`api.themoviedb.org`, `image.tmdb.org`): your searches, the titles and actors you
+>   open, and your API key. It's the source for series, movies, cast, platforms and dates.
+> - **Open Library** (`openlibrary.org`, `covers.openlibrary.org`): your book searches and the
+>   covers.
+> - **Your Nextcloud**, if you turn on automatic backup: the whole backup, with your user and your
+>   app password.
+> - **Streaming platforms**: only if you tap a "Where to watch" link, which opens the search in the
+>   browser or in their app.
 
-## Instalación
+Your library, your marks and your notes are never sent to TMDB or Open Library.
 
-### Desde un APK
+## Installation
 
-Descarga el APK de la [última release](https://github.com/iamLudok/Ludok-time/releases/latest) e
-instálalo en el móvil (Android pedirá permitir instalar apps de esa fuente). Para buscar series y
-películas necesitas una [API key gratuita de TMDB](https://www.themoviedb.org/settings/api); la app
-te explica cómo conseguirla.
+### From an APK
 
-Las actualizaciones se instalan **encima** conservando los datos, siempre que el APK nuevo esté
-firmado con la misma clave que el anterior.
+Download the APK from the [latest release](https://github.com/iamLudok/Ludok-time/releases/latest)
+and install it on your phone (Android will ask you to allow installing apps from that source). To
+search series and movies you need a [free TMDB API key](https://www.themoviedb.org/settings/api);
+the app explains how to get one.
 
-### Desde el código
+Updates install **on top** and keep your data, as long as the new APK is signed with the same key
+as the previous one.
 
-Hace falta Node 22, JDK 17, Android SDK con API 36 y `adb`.
+### From source
+
+You need Node 22, JDK 17, the Android SDK with API 36, and `adb`.
 
 ```bash
 git clone https://github.com/iamLudok/Ludok-time.git
 cd Ludok-time
 npm install
-npm run android      # instala y abre en un móvil conectado por adb
+npm run android      # installs and opens it on a phone connected over adb
 ```
 
-> Gradle pide un toolchain de **Java 17**. Si falla con «Cannot find a Java installation matching
-> languageVersion=17» teniendo un JDK más nuevo, apunta al que Gradle ya se descargó:
+> Gradle needs a **Java 17** toolchain. If it fails with "Cannot find a Java installation matching
+> languageVersion=17" while you have a newer JDK, point it to the one Gradle already downloaded:
 >
 > ```bash
 > export JAVA_HOME=~/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2
 > ```
 
-### Compilar un APK firmado
+### Build a signed APK
 
-Tiene que ser **release**, no debug: en debug el JavaScript no va dentro del APK, se carga del
-servidor de Metro, así que no funciona sin el ordenador delante.
+It has to be a **release** build, not debug: in debug the JavaScript isn't bundled in the APK, it's
+loaded from the Metro server, so it doesn't work without your computer.
 
-La primera vez, crea tu propio keystore en la raíz del proyecto:
+The first time, create your own keystore at the project root:
 
 ```bash
 keytool -genkeypair -v -keystore release.jks -alias ludok -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Y un `keystore.properties` al lado:
+And a `keystore.properties` next to it:
 
 ```properties
 storeFile=release.jks
-storePassword=tu-contraseña
+storePassword=your-password
 keyAlias=ludok
-keyPassword=tu-contraseña
+keyPassword=your-password
 ```
 
-Los dos están en `.gitignore`. Después:
+Both are in `.gitignore`. Then:
 
 ```bash
-npm run build:apk                    # todas las arquitecturas
-./scripts/build-apk.sh --compartir   # solo arm64-v8a, bastante más ligero, para repartir
-# → dist/Ludok-Time-<versión>.apk
+npm run build:apk                    # all architectures
+./scripts/build-apk.sh --compartir   # arm64-v8a only, much lighter, for sharing
+# → dist/Ludok-Time-<version>.apk
 ```
 
-Instalar: `adb install -r dist/Ludok-Time-<versión>.apk`.
+Install: `adb install -r dist/Ludok-Time-<version>.apk`.
 
 > [!WARNING]
-> **Guarda el keystore como oro**, junto a tus copias de seguridad y fuera del ordenador. Android
-> solo deja instalar un APK encima de otro si van firmados con la misma clave. Si se pierde, la única
-> salida es desinstalar, y **desinstalar borra los datos de la app**. Es lo único del proyecto que
-> no se puede regenerar.
+> **Guard the keystore with your life**, next to your backups and off your computer. Android only
+> installs an APK on top of another if both are signed with the same key. If it's lost, the only way
+> out is to uninstall, and **uninstalling deletes the app's data**. It's the one thing in this
+> project that can't be regenerated.
 
-## Copias de seguridad
+## Backups
 
-**A mano**, en Ajustes: exportar abre el menú de compartir del sistema con un JSON, e importar
-deja elegir entre reemplazarlo todo o fusionar con lo que ya hay. La importación va en una
-transacción: si algo falla a mitad, la base de datos no se queda a medias.
+**By hand**, in Ajustes (Settings): exporting opens the system share menu with a JSON file, and
+importing lets you choose between replacing everything or merging with what's already there. The
+import runs in a transaction: if something fails halfway, the database isn't left half-written.
 
-**Automática a Nextcloud**, en Ajustes → Copia automática a Nextcloud: dirección, usuario,
-contraseña y carpeta. Al abrir la app estando en WiFi sube sola, como mucho una vez cada 12 horas,
-con un fichero por día. No se usa una tarea en segundo plano a propósito: Android las mata sin
-avisar y encima no se vería si funcionan. Como la app se abre a diario, en la práctica la copia
-acaba siendo diaria igual.
+**Automatic to Nextcloud**, in Ajustes → Copia automática a Nextcloud: address, user, password and
+folder. When you open the app on WiFi it uploads on its own, at most once every 12 hours, with one
+file per day. No background task is used on purpose: Android kills them without warning, and you
+couldn't even tell whether they work. Since the app gets opened every day, in practice the backup
+ends up being daily anyway.
 
-Usa una **contraseña de aplicación** de Nextcloud (Ajustes personales → Seguridad), no la de la
-cuenta: se puede revocar sin tocar nada más. Con `http://` la contraseña y la copia viajan sin
-cifrar; para un servidor fuera de casa usa `https://`.
+Use a Nextcloud **app password** (Personal settings → Security), not your account password: it can
+be revoked without touching anything else. With `http://` the password and the backup travel
+unencrypted; for a server outside your home, use `https://`.
 
-**Qué no va en las copias.** Ni la contraseña de Nextcloud ni la API key de TMDB: una copia se
-comparte y se mueve de sitio, y la propia copia acaba subida al Nextcloud, así que viajaría con su
-llave dentro. Al restaurar en un móvil nuevo hay que volver a escribirlas; si ese móvil ya las
-tenía, se conservan. Las copias de antes de noviembre de 2026 sí llevan la key, y al importarlas se
-restaura.
+**What isn't in the backups.** Neither the Nextcloud password nor the TMDB API key: a backup gets
+shared and moved around, and the backup itself ends up uploaded to Nextcloud, so it would travel
+with its own key inside. When restoring on a new phone you have to enter them again; if that phone
+already had them, they're kept. Backups from before November 2026 do contain the key, and importing
+them restores it.
 
-El formato de copia **solo crece**: se añaden campos opcionales, nunca se quitan ni se cambian los
-que ya hay, para que cualquier copia guardada se pueda seguir restaurando.
+The backup format **only grows**: optional fields are added, existing ones are never removed or
+changed, so any saved backup can still be restored.
 
-## Desarrollo
-
-```bash
-npm run typecheck    # tipos de la app y de los scripts de verificación
-npm run verify       # comprueba la capa de datos
-```
-
-### Verificación de la capa de datos
-
-Los datos son la parte que no puede fallar, así que se prueban ejecutando **el mismo código que
-corre en el móvil** contra un SQLite de escritorio:
+## Development
 
 ```bash
-npm run verify:data       # formato de copia: ida y vuelta, huecos, volumen, rechazos, secretos
-npm run verify:library    # reglas: episodios, estados, revisionados, libros, borrados
-npm run verify:migration  # que actualizar de versión no pierde nada
-npm run verify:upcoming   # qué series entran en «Próximos»
-npm run verify:real ./ludok-time-backup-AAAA-MM-DD.json   # con una copia real tuya
+npm run typecheck    # types for the app and the verification scripts
+npm run verify       # checks the data layer
 ```
 
-Esto es posible porque la lógica pide la base de datos a [`src/lib/dbRef.ts`](src/lib/dbRef.ts) en
-vez de crearla ella: [`src/lib/db.ts`](src/lib/db.ts) es el **único** fichero que toca
-`expo-sqlite`.
+### Verifying the data layer
 
-Se usa **libsql** y no `better-sqlite3` porque este último es síncrono y no admite transacciones
-asíncronas, mientras que `expo-sqlite` sí: con libsql la semántica coincide con la real. Estas
-pruebas ya han pillado fallos que habrían corrompido datos en silencio, por ejemplo un upsert que
-mezclaba las filas entre sí al importar.
+Data is the part that can't fail, so it's tested by running **the same code that runs on the
+phone** against a desktop SQLite:
 
-### Estructura
+```bash
+npm run verify:data       # backup format: round trip, gaps, volume, rejections, secrets
+npm run verify:library    # rules: episodes, statuses, rewatches, books, deletions
+npm run verify:migration  # upgrading doesn't lose anything
+npm run verify:upcoming   # which series show up in Upcoming
+npm run verify:real ./ludok-time-backup-YYYY-MM-DD.json   # with a real backup of yours
+```
+
+This works because the logic gets its database from [`src/lib/dbRef.ts`](src/lib/dbRef.ts) instead
+of creating it: [`src/lib/db.ts`](src/lib/db.ts) is the **only** file that touches `expo-sqlite`.
+
+It uses **libsql** rather than `better-sqlite3` because the latter is synchronous and doesn't
+support async transactions, while `expo-sqlite` does: with libsql the semantics match the real
+thing. These tests have already caught bugs that would have silently corrupted data, such as an
+upsert that mixed rows up during import.
+
+### Structure
 
 ```
-app/                     # rutas (expo-router)
-  (tabs)/                # Biblioteca, Añadir, Próximos, Stats, Ajustes
-  series|movie|book/[id] # fichas
-  person/[tmdbId]        # perfil de un actor
-  preview/…              # vista previa antes de añadir
+app/                     # routes (expo-router)
+  (tabs)/                # Library, Add, Upcoming, Stats, Settings
+  series|movie|book/[id] # detail pages
+  person/[tmdbId]        # an actor's profile
+  preview/…              # preview before adding
 src/
-  lib/                   # datos y lógica
-    library/             # reglas de la biblioteca: episodios, revisionados, libros…
-  ui/                    # tokens de diseño y componentes base
-  components/            # piezas con lógica de la app
-  hooks/                 # consultas reactivas (useLiveQuery de Drizzle)
-verify/                  # comprobaciones (Node, no van dentro del APK)
-scripts/                 # compilar y firmar el APK
-logo/                    # logo e iconos de la app
-docs/screenshots/        # capturas del README
+  lib/                   # data and logic
+    library/             # library rules: episodes, rewatches, books…
+  ui/                    # design tokens and base components
+  components/            # app components with logic
+  hooks/                 # reactive queries (Drizzle's useLiveQuery)
+verify/                  # checks (Node, not shipped in the APK)
+scripts/                 # build and sign the APK
+logo/                    # app logo and icons
+docs/screenshots/        # README screenshots
 ```
 
-## Detalles de diseño
+## Design Notes
 
-**«Sala oscura».** La carátula es lo único que pone color; la interfaz es monocroma **sin color de
-acento**, y la jerarquía la marca el contraste. El color solo aparece con significado: rojo para
-borrar, ámbar para el aviso de copia. Todo sale de [`src/ui/theme.ts`](src/ui/theme.ts). El tema
-claro sigue el mismo criterio.
+**"Sala oscura" (dark room).** The poster is the only thing that adds color; the interface is
+monochrome **with no accent color**, and hierarchy comes from contrast. Color only appears when it
+means something: red for deleting, amber for the backup warning. Everything comes from
+[`src/ui/theme.ts`](src/ui/theme.ts). The light theme follows the same rule.
 
-## Historia
+## History
 
-Hasta julio de 2026 esto era una PWA (Vite + React + Dexie) publicada en GitHub Pages. Se reescribió
-como app nativa por tres motivos: no convencía cómo se veía, no convencía el tacto, y **en
-GrapheneOS no llegaba a ser una app**. Vanadium
-[no soporta WebAPKs](https://discuss.grapheneos.org/d/4175-does-pwa-use-webview-or-vanadium)
-porque se generan en servidores de Google, así que lo que se instalaba era un acceso directo que
-abría el navegador. De paso se resolvió mejor el miedo original: en la web había que *pedirle* al
-navegador que no borrara los datos (`navigator.storage.persist()`), y podía negarse. En nativo solo
-desaparecen si desinstalas la app.
+Until July 2026 this was a PWA (Vite + React + Dexie) published on GitHub Pages. It was rewritten
+as a native app for three reasons: the look wasn't convincing, the feel wasn't convincing, and **on
+GrapheneOS it never became a real app**. Vanadium
+[doesn't support WebAPKs](https://discuss.grapheneos.org/d/4175-does-pwa-use-webview-or-vanadium)
+because they're generated on Google's servers, so what got installed was a shortcut that opened the
+browser. The rewrite also solved the original fear better: on the web you had to *ask* the browser
+not to delete the data (`navigator.storage.persist()`), and it could say no. On native, data only
+disappears if you uninstall the app.
 
-El formato de las copias sigue siendo compatible con el de aquella versión (`SCHEMA_VERSION` sigue
-valiendo 2), así que una copia guardada entonces todavía se puede restaurar. El código web sigue en
-el historial de git.
+The backup format is still compatible with that version (`SCHEMA_VERSION` is still 2), so a backup
+saved back then can still be restored. The web code remains in the git history.
 
-Por el camino se quitaron dos cosas:
+Two things were removed along the way:
 
-- **Vídeos de YouTube** (por enlace y por import del historial de Takeout), en agosto de 2026, por
-  no usarse. Una copia anterior se sigue pudiendo importar: los vídeos se descartan y la app dice
-  cuántos.
-- **Manga** (MangaDex, con enlace de lectura a inManga), en noviembre de 2026, hasta tenerlo mejor
-  pensado. Los ya apuntados **no se borran**: siguen en la base de datos y en las copias, solo que
-  la app no los muestra. Por eso se quedan en el esquema las columnas `currentChapter`,
-  `totalChapters` y `readUrl`, y el tipo `manga`.
+- **YouTube videos** (by link and by importing the Takeout history), in August 2026, because they
+  weren't used. An older backup can still be imported: the videos are dropped and the app says how
+  many.
+- **Manga** (MangaDex, with a reading link to inManga), in November 2026, until it's better thought
+  out. Manga already logged **isn't deleted**: it stays in the database and in backups, the app just
+  doesn't show it. That's why the `currentChapter`, `totalChapters` and `readUrl` columns and the
+  `manga` type remain in the schema.
 
-## Contribuir
+## Contributing
 
-Los pull requests son bienvenidos. Mira [CONTRIBUTING.md](CONTRIBUTING.md) para preparar el entorno
-y las convenciones del proyecto. Para avisar de una vulnerabilidad, sigue
-[SECURITY.md](SECURITY.md) en vez de abrir un issue público.
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and the
+project's conventions. To report a security vulnerability, follow [SECURITY.md](SECURITY.md)
+instead of opening a public issue.
 
-## Licencia
+## License
 
-Distribuido bajo la **licencia MIT**: puedes usarlo, modificarlo y redistribuirlo, también con fines
-comerciales, manteniendo el aviso de copyright. Mira [LICENSE](LICENSE) para el texto completo.
+Distributed under the **MIT License**: you can use, modify and redistribute it, including for
+commercial purposes, as long as you keep the copyright notice. See [LICENSE](LICENSE) for the full
+text.
 
-Este producto usa la API de TMDB, pero no está respaldado ni certificado por TMDB. Los datos de
-libros vienen de [Open Library](https://openlibrary.org/).
+This product uses the TMDB API but is not endorsed or certified by TMDB. Book data comes from
+[Open Library](https://openlibrary.org/).
 
 ---
 
 <div align="center">
 
-Hecho por [Luken Iriondo](https://github.com/iamLudok) · Si Ludok Time te resulta útil, dale una ⭐
+Made by [Luken Iriondo](https://github.com/iamLudok) · If Ludok Time is useful to you, consider giving it a ⭐
+
+🇪🇸 [En castellano](https://iamludok.github.io/ludok-apps-web/apps/time/)
 
 </div>
