@@ -12,7 +12,7 @@ const FALLBACK: Record<MediaType, string> = {
   // Ya no se puede añadir manga, pero los que se apuntaron antes siguen en la
   // base de datos con este tipo (ver `MediaType`).
   manga: 'Manga',
-  custom: '—',
+  custom: '-',
 }
 
 interface Props {
@@ -27,7 +27,7 @@ interface Props {
 
 /**
  * Carátula. `expo-image` la guarda en disco, así que una vez vista se sigue
- * viendo sin conexión — algo que en la web dependía del service worker.
+ * viendo sin conexión, algo que en la web dependía del service worker.
  *
  * Cuando no hay imagen (libros a mano, vídeos sin miniatura) el hueco muestra el
  * título en pequeño en vez de un icono genérico: en una rejilla de carátulas, un

@@ -65,7 +65,7 @@ export default function MovieDetail() {
           .join(' · ')}
       >
         <Button
-          title={watched ? 'Vista — desmarcar' : 'Marcar como vista'}
+          title={watched ? 'Vista (desmarcar)' : 'Marcar como vista'}
           kind={watched ? 'secondary' : 'primary'}
           small
           onPress={async () => {
