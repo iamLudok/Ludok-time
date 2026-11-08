@@ -2,7 +2,7 @@
  * Verificación de la pantalla «Próximos».
  *
  * Comprueba lo que se decide sin red: qué series entran en la lista y cómo se
- * ordenan. Las peticiones a TMDB no se prueban aquí — eso solo se ve con la app
+ * ordenan. Las peticiones a TMDB no se prueban aquí: eso solo se ve con la app
  * en la mano y una API key de verdad.
  */
 import { followedSeries, whenLabel, cachedUpcoming } from '../src/lib/upcoming'
@@ -11,7 +11,7 @@ import type { Item, Status, MediaType } from '../src/types'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
-  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ' — ' + detail : ''}`)
+  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ': ' + detail : ''}`)
   if (!ok) failures++
 }
 function eq<T>(label: string, actual: T, expected: T) {
@@ -86,7 +86,7 @@ function main() {
 
   console.log(
     failures === 0
-      ? '\n✅ TODO CORRECTO — la lista de próximos incluye lo que debe\n'
+      ? '\n✅ TODO CORRECTO: la lista de próximos incluye lo que debe\n'
       : `\n❌ ${failures} COMPROBACIONES FALLIDAS\n`,
   )
   process.exit(failures === 0 ? 0 : 1)

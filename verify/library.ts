@@ -62,7 +62,7 @@ import type { Item, Episode } from '../src/types'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
-  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ' — ' + detail : ''}`)
+  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ': ' + detail : ''}`)
   if (!ok) failures++
 }
 function eq_<T>(label: string, actual: T, expected: T) {
@@ -370,7 +370,7 @@ async function main() {
 
   console.log('\n=== 17. Temporadas anunciadas de verdad ===')
   // Bug real: "Nadie quiere esto" muestra una T3 en TMDB con 10 episodios
-  // "plantilla" (Episodio 1, Episodio 2…), sin foto y sin fecha — la temporada
+  // "plantilla" (Episodio 1, Episodio 2…), sin foto y sin fecha: la temporada
   // se renovó pero no hay nada grabado todavía. La señal fiable es la fecha DE
   // LA TEMPORADA, no la de cada episodio.
   const temporadaSeason = (n: number, airDate?: string): TmdbSeason => ({
@@ -389,8 +389,8 @@ async function main() {
   check('la 1 y la 2 pasan', anunciadas.some((s) => s.seasonNumber === 1) && anunciadas.some((s) => s.seasonNumber === 2))
   check('la 3 (sin fecha) se queda fuera', !anunciadas.some((s) => s.seasonNumber === 3))
 
-  // Wednesday T3: mismo caso, pero con 0 episodios en vez de 10 de relleno —
-  // el filtro tiene que dar igual, porque mira la fecha, no cuántos episodios trae.
+  // Wednesday T3: mismo caso, pero con 0 episodios en vez de 10 de relleno.
+  // El filtro tiene que dar igual, porque mira la fecha, no cuántos episodios trae.
   const wednesday = [
     temporadaSeason(1, '2022-11-23'),
     temporadaSeason(2, '2025-08-06'),
@@ -398,7 +398,7 @@ async function main() {
   ]
   eq_('da igual que la plantilla traiga 0 episodios', announcedSeasons(wednesday).length, 2)
 
-  // The Bear T5: fecha futura pero YA decidida — eso no es una plantilla, es
+  // The Bear T5: fecha futura pero YA decidida. Eso no es una plantilla, es
   // una temporada real con estreno programado. Cuenta como anunciada; que sus
   // episodios individuales aún no hayan salido ya lo filtra `hasAired` aparte.
   const theBear = [temporadaSeason(4, '2025-06-25'), temporadaSeason(5, '2026-06-25')]
@@ -528,7 +528,7 @@ async function main() {
 
   console.log(
     failures === 0
-      ? '\n✅ TODO CORRECTO — las reglas se comportan igual que en la web\n'
+      ? '\n✅ TODO CORRECTO: las reglas se comportan igual que en la web\n'
       : `\n❌ ${failures} COMPROBACIONES FALLIDAS\n`,
   )
   cleanup()

@@ -17,7 +17,7 @@ import type { BackupFile } from '../src/types'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
-  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ' — ' + detail : ''}`)
+  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ': ' + detail : ''}`)
   if (!ok) failures++
 }
 function eq<T>(label: string, actual: T, expected: T) {

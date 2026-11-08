@@ -14,7 +14,7 @@ import { CREATE_SQL, MIGRATIONS, DB_VERSION } from '../src/lib/schemaSql'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
-  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ' — ' + detail : ''}`)
+  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ': ' + detail : ''}`)
   if (!ok) failures++
 }
 function eq<T>(label: string, actual: T, expected: T) {
@@ -269,7 +269,7 @@ async function main() {
 
   console.log(
     failures === 0
-      ? '\n✅ LA MIGRACIÓN ES SEGURA — nada se pierde al actualizar\n'
+      ? '\n✅ LA MIGRACIÓN ES SEGURA: nada se pierde al actualizar\n'
       : `\n❌ ${failures} COMPROBACIONES FALLIDAS\n`,
   )
   cleanup()

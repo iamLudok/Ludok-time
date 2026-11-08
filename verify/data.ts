@@ -30,7 +30,7 @@ import type { BackupFile, Item, Episode } from '../src/types'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
-  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ' — ' + detail : ''}`)
+  console.log(`${ok ? '  ok  ' : ' FALLO'} ${label}${detail ? ': ' + detail : ''}`)
   if (!ok) failures++
 }
 function eq<T>(label: string, actual: T, expected: T) {
@@ -90,7 +90,7 @@ const items: Item[] = [
     completedAt: 1700000300000,
   },
   {
-    // Libro a mano: sin sourceId, sin poster — los huecos importan.
+    // Libro a mano, sin sourceId ni poster: los huecos importan.
     id: 'it-libro-1',
     type: 'book',
     source: 'manual',
@@ -398,7 +398,7 @@ async function main() {
 
   console.log(
     failures === 0
-      ? '\n✅ TODO CORRECTO — los datos entran y salen sin perder nada\n'
+      ? '\n✅ TODO CORRECTO: los datos entran y salen sin perder nada\n'
       : `\n❌ ${failures} COMPROBACIONES FALLIDAS\n`,
   )
   cleanupTempFiles()
